@@ -1,7 +1,8 @@
+import React, { useState, useEffect } from "react";
 import { Text, View, StyleSheet, TouchableOpacity, ImageBackground, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 // import { useRoute } from "@react-navigation/native";
 // Defining the color palette based on your dashboard snippet
@@ -12,15 +13,43 @@ const COLORS = {
   white: "#FFFFFF",
 };
 
+// Defining the slides for the carousel with local images and remote URLs
+const SLIDES = [
+  {
+    image: require("../assets/images/z-ton-lady1.png"),
+    headline: "Easy banking experience",
+    subheadline: "A whole world of possibilities at your fingertips.",
+  },
+  {
+    image: require("../assets/images/z-ton-lady2.png"), 
+    headline: "Secure & Fast Payments",
+    subheadline: "Transfer funds across the globe in just a few taps.",
+  },
+  {
+    image: require("../assets/images/z-ton-lady1.png"),
+    headline: "Manage Your Wealth",
+    subheadline: "Smart tools to help you save and grow your money.",
+  }
+];
+
 export default function Index() {
   const router = useRouter();
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Carousel effect: Automatically change slides every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % SLIDES.length);
+    }, 5000); // Changes every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const activeSlide = SLIDES[currentIndex]; // Get the current active slide based on the index
   
-
-
-
   return (
     <ImageBackground
-    source={require("../assets/images/z5.png")} 
+      source={activeSlide.image} 
       style={styles.background}
       imageStyle={styles.backgroundImage}
       resizeMode="cover" 
@@ -35,7 +64,7 @@ export default function Index() {
         {/* Header with Logo at the Right */}
         <View style={styles.header}>
           <Image 
-            source={require("../assets/images/z-ton-icon.jpg")}  
+            source={require("../assets/images/app-icon.jpg")}  
             style={styles.logoImage} 
           />
         </View>
@@ -44,8 +73,18 @@ export default function Index() {
           {/* Welcome Section moved down */}
           <View style={styles.welcomeSection}>
             <View style={styles.welcomeTextContainer}>
-              <Text style={styles.headline}>Easy banking experience</Text>
-              <Text style={styles.subheadline}>A whole world of possibilities at your fingertips.</Text>
+              <Text style={styles.headline}>{activeSlide.headline}</Text>
+              <Text style={styles.subheadline}>{activeSlide.subheadline}</Text>
+              
+              {/* Pagination Dots */}
+              <View style={styles.paginationContainer}>
+                {SLIDES.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[styles.dot, currentIndex === index ? styles.activeDot : styles.inactiveDot]}
+                  />
+                ))}
+              </View>
             </View>
             <TouchableOpacity style={styles.notificationButton}>
               <Ionicons name="notifications-outline" size={24} color="black" />
@@ -76,7 +115,7 @@ export default function Index() {
               <Text style={styles.linkText}>Open Account</Text>
             </TouchableOpacity>
             <View style={styles.separator} />
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/pages/views/help")}>
               <Text style={styles.linkText}>Help</Text>
             </TouchableOpacity>
           </View>
@@ -158,6 +197,23 @@ const styles = StyleSheet.create({
   subheadline: {
     color: '#E5E7EB',
     fontSize: 15,
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  activeDot: {
+    backgroundColor: COLORS.gold,
+    width: 20, // Slightly wider to show it's active
+  },
+  inactiveDot: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   notificationButton: {
     backgroundColor: COLORS.white,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, TextInput, Switch, Modal, FlatList, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, TextInput, Switch, Modal, FlatList, StatusBar, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 
@@ -33,12 +33,44 @@ const TransferScreen = () => {
   const [showBankModal, setShowBankModal] = useState(false);
   const [selectedBank, setSelectedBank] = useState(null); // Stores the selected bank object { id, name }
   const [isScheduled, setIsScheduled] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pin, setPin] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Handle number press for PIN input
+  const handleNumberPress = (num) => {
+    if (pin.length < 4 && !isLoading) {
+      setPin(prev => prev + num);
+    }
+  };
+
+  // Handle backspace for PIN input
+  const handleBackspace = () => {
+    if (!isLoading) {
+      setPin(pin.slice(0, -1));
+    }
+  };
+
+  // Simulate transfer action
+  const handleTransfer = () => {
+    setIsLoading(true);
+    // Simulate an API call delay
+    setTimeout(() => {
+      setIsLoading(false);
+      setShowConfirmModal(false);
+      setShowSuccessModal(true);
+      setPin('');
+      // You would typically navigate to a success screen or show a success message here
+    }, 3000);
+  };
+
+
   const router = useRouter();
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-                           
         {/* Top Action Row: History and Saved */}
         <View style={styles.topActionRow}>
           <TouchableOpacity style={styles.topActionButton} onPress={() => router.push("/pages/navigate/transfer-history")}>
@@ -108,16 +140,13 @@ const TransferScreen = () => {
         <View style={styles.horizontalDivider} />
 
         {/* Quick Select Beneficiary */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Quick Select Beneficiary</Text>
-          <TouchableOpacity 
-            style={styles.pickerBox} 
-            onPress={() => router.push("/pages/navigate/select-beneficiary")} // Link to saved transfers
-          >
-            <Text style={styles.pickerText}>Choose from Saved</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity 
+          style={styles.quickSelectRow} 
+          onPress={() => router.push("/pages/navigate/select-beneficiary")}
+        >
+          <Text style={styles.quickSelectText}>Quick Select Beneficiary? <Text style={styles.goldText}>Choose from Saved</Text></Text>
+          <Ionicons name="chevron-forward" size={16} color={COLORS.gold} />
+        </TouchableOpacity>
         
         {/* Amount Input */}
         <View style={styles.inputGroup}>
@@ -156,7 +185,7 @@ const TransferScreen = () => {
 
         {/* Footer Actions: Continue and Fingerprint */}
         <View style={styles.footerRow}>
-          <TouchableOpacity style={styles.continueButton}>
+          <TouchableOpacity style={styles.continueButton} onPress={() => setShowConfirmModal(true)}>
             <Text style={styles.continueButtonText}>CONTINUE</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.fingerprintButton}>
@@ -169,18 +198,18 @@ const TransferScreen = () => {
       {/* Bank Selection Modal */}
       <Modal
         animationType="slide"
-        transparent={false}
+        transparent={true}
         visible={showBankModal}
         onRequestClose={() => setShowBankModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-          <View style={styles.modalHeader}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.bankModalContent}>
+            <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowBankModal(false)} style={styles.modalCloseButton}>
               <Ionicons name="close-outline" size={28} color={COLORS.black} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Select a Bank</Text>
-            <View style={{ width: 28 }} />{/* Placeholder for alignment */}
+            <View style={{ width: 28 }} />
           </View>
           <TextInput 
             style={styles.modalSearchInput}
@@ -210,7 +239,134 @@ const TransferScreen = () => {
               </View>
             }
           />
-        </SafeAreaView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Confirm Transfer Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showConfirmModal}
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContent}>
+            <View style={styles.confirmHeader}>
+              <Text style={styles.confirmTitle}>Confirm Transfer</Text>
+              <TouchableOpacity onPress={() => { setShowConfirmModal(false); setPin(''); }}>
+                <Ionicons name="close" size={24} color={COLORS.black} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.confirmBody}>
+              <Text style={styles.confirmSubtext}>You are about to transfer the money to:</Text>
+              <View style={styles.staticDetailBox}>
+                <Text style={styles.staticName}>Usman Adams</Text>
+                <Text style={styles.staticAccount}>0123456789 | Z-ton Bank</Text>
+              </View>
+
+              <View style={styles.modalHorizontalDivider} />
+
+              <Text style={styles.enterPinLabel}>Enter PIN</Text>
+              
+              {/* PIN Display Dots */}
+              <View style={styles.pinDisplayRow}>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.gold} />
+                ) : (
+                  [1, 2, 3, 4].map((_, index) => (
+                    <View 
+                      key={index} 
+                      style={[
+                        styles.pinDot, 
+                        pin.length > index && styles.pinDotFilled
+                      ]} 
+                    />
+                  ))
+                )}
+              </View>
+
+              {/* Custom Keypad */}
+              <View style={styles.keypadContainer}>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <TouchableOpacity 
+                    key={num} 
+                    style={[styles.keypadButton, isLoading && { opacity: 0.5 }]}
+                    disabled={isLoading}
+                    onPress={() => handleNumberPress(num.toString())}
+                  >
+                    <Text style={styles.keypadButtonText}>{num}</Text>
+                  </TouchableOpacity>
+                ))}
+                <View style={styles.keypadButton} />
+                <TouchableOpacity 
+                  style={[styles.keypadButton, isLoading && { opacity: 0.5 }]}
+                  disabled={isLoading}
+                  onPress={() => handleNumberPress('0')}
+                >
+                  <Text style={styles.keypadButtonText}>0</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.keypadButton, isLoading && { opacity: 0.5 }]}
+                  disabled={isLoading}
+                  onPress={handleBackspace}
+                >
+                  <Ionicons name="backspace-outline" size={24} color={COLORS.black} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.modalTransferButton, (pin.length < 4 || isLoading) && styles.disabledButton]}
+                disabled={pin.length < 4 || isLoading}
+                onPress={handleTransfer}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <Text style={styles.modalTransferButtonText}>Confirm & Transfer</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showSuccessModal}
+        onRequestClose={() => setShowSuccessModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.successModalContent}>
+            <View style={styles.successIconContainer}>
+              <Ionicons name="checkmark-circle" size={100} color={COLORS.gold} />
+            </View>
+            
+            <Text style={styles.successTitle}>Transfer Successful</Text>
+            <Text style={styles.successMessage}>
+              Your transfer to <Text style={{ fontWeight: 'bold', color: COLORS.black }}>Usman Adams</Text> (Z-ton Bank - 9902910283) was successful.
+            </Text>
+
+            <View style={styles.successButtonRow}>
+              <TouchableOpacity style={styles.outlineButton}>
+                <Text style={styles.outlineButtonText}>View Receipt</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.outlineButton}>
+                <Text style={styles.outlineButtonText}>Save Payment</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.successCloseButton}
+              onPress={() => setShowSuccessModal(false)}
+            >
+              <Text style={styles.successCloseButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -283,18 +439,34 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: COLORS.lightGray,
     marginVertical: 25, // Adjust spacing as needed
+  }, 
+  quickSelectRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: -10,
   },
+  quickSelectText: {
+    fontSize: 13,
+    color: COLORS.gray,
+    fontWeight: '500',
+  },
+  goldText: { color: COLORS.gold, fontWeight: 'bold' },
   // Modal Styles
-  modalContainer: {
-    flex: 1,
+  bankModalContent: {
     backgroundColor: COLORS.white,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    maxHeight: '75%',
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.lightGray,
   },
@@ -313,7 +485,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.black,
   },
-  bankListItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  bankListItem: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingVertical: 12, 
+    paddingHorizontal: 20, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F0F0F0' 
+  },
   bankListItemText: { fontSize: 16, color: COLORS.black },
 
   scheduleRow: {
@@ -338,8 +518,131 @@ const styles = StyleSheet.create({
   fingerprintButton: { padding: 5 },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
   emptyText: { color: COLORS.gray, fontSize: 16 },
+
+  // Confirm Modal Specific Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  confirmModalContent: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingBottom: 20,
+    minHeight: '55%',
+  },
+  confirmHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.lightGray,
+  },
+  confirmTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.black },
+  confirmBody: { padding: 15, alignItems: 'center' },
+  confirmSubtext: { fontSize: 14, color: COLORS.gray, marginBottom: 8 },
+  staticDetailBox: { alignItems: 'center', marginBottom: 10 },
+  staticName: { fontSize: 20, fontWeight: 'bold', color: COLORS.black },
+  staticAccount: { fontSize: 14, color: COLORS.gray, marginTop: 5 },
+  modalHorizontalDivider: {
+    height: 1,
+    backgroundColor: COLORS.lightGray,
+    width: '100%',
+    marginVertical: 15,
+  },
+  enterPinLabel: { fontSize: 16, fontWeight: '600', color: COLORS.black, marginBottom: 15 },
+  pinDisplayRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  pinDot: {
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    borderWidth: 1,
+    borderColor: COLORS.gray,
+    marginHorizontal: 15,
+  },
+  pinDotFilled: {
+    backgroundColor: COLORS.gold,
+    borderColor: COLORS.gold,
+  },
+  keypadContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    width: '80%',
+    marginBottom: 20,
+  },
+  keypadButton: {
+    width: '30%',
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  keypadButtonText: { fontSize: 24, fontWeight: '600', color: COLORS.black },
+  modalTransferButton: {
+    backgroundColor: COLORS.black,
+    paddingVertical: 16,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalTransferButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
+  disabledButton: { backgroundColor: COLORS.gray },
+
+  // Success Modal Styles
+  successModalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 25,
+    padding: 25,
+    width: '90%',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 'auto',
+    marginTop: 'auto',
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.black,
+    marginBottom: 10,
+  },
+  successMessage: {
+    fontSize: 15,
+    color: COLORS.gray,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 30,
+  },
+  successButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 15,
+  },
+  outlineButton: {
+    flex: 0.48,
+    borderWidth: 1,
+    borderColor: COLORS.gold,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  outlineButtonText: { color: COLORS.gold, fontWeight: 'bold', fontSize: 14 },
+  successCloseButton: {
+    backgroundColor: COLORS.black,
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  successCloseButtonText: { color: COLORS.white, fontWeight: 'bold', fontSize: 16 },
 });
-
-
-
-// OK that's a good job let's work for the transfer section now so this is how I want you to design the transfer section I want you to design the transfer section in such a way that like the first one when you have something like transfer history and save transfer so the both of them should be in the same line next time Dennis you show show something like select transfer mode ahead with it with it's got able to continue like owner accounts zenith owner account zeton bank hey and other bank you understand but all of these three should also be in the same line then there should be an input field that says select source accounts select the another input field for select destination account you understand the amount transaction description then then if you contain something like schedule transfer to them before continue with the fingerprint also

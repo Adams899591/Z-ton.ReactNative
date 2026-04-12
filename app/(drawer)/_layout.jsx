@@ -1,9 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Drawer } from 'expo-router/drawer';
 import { DrawerContentScrollView, DrawerItemList, DrawerItem } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 
 const COLORS = {
   black: "#000000",
@@ -14,16 +16,50 @@ const COLORS = {
 };
 
 function CustomDrawerContent(props) {
+  const [profileImage, setProfileImage] = useState('https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop');
+
+  const pickImage = async () => {
+    Alert.alert(
+      "Profile Picture",
+      "Choose an option",
+      [
+        { text: "Camera", onPress: () => openPicker(true) },
+        { text: "Gallery", onPress: () => openPicker(false) },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
+  };
+
+  const openPicker = async (isCamera) => {
+    const permission = isCamera 
+      ? await ImagePicker.requestCameraPermissionsAsync() 
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert("Permission Required", "We need access to your photos to change your profile picture.");
+      return;
+    }
+
+    const result = isCamera 
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 })
+      : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+
+    if (!result.canceled) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
 
   return (
     <View style={{ flex: 1 }}>
-    
       <DrawerContentScrollView {...props} contentContainerStyle={{ backgroundColor: COLORS.white }}>
         {/* Header Profile Section */}
         <View style={styles.drawerHeader}>
-          <View style={styles.profileImageContainer}>
-            <Ionicons name="person-circle" size={80} color={COLORS.gold} />
-          </View>
+          <TouchableOpacity style={styles.profileImageContainer} onPress={pickImage}>
+            <Image source={{ uri: profileImage }} style={styles.profileImage} />
+            <View style={styles.editIconContainer}>
+              <Ionicons name="camera" size={16} color={COLORS.white} />
+            </View>
+          </TouchableOpacity>
           <Text style={styles.userName}>Z-ton User</Text>
           <Text style={styles.accountNumber}>Acc: 0123456789</Text>
         </View>
@@ -71,9 +107,6 @@ function CustomDrawerContent(props) {
   );
 }
 
-// pls help me make this section profetion so it show an image from unples annd also design it in shuch a where is has a icon where clicking on it the user choses either camara or gallery and it shouls also be edicted before saving 
-
-
 export default function DrawerLayout() {
   return (
     <Drawer
@@ -111,8 +144,10 @@ export default function DrawerLayout() {
 }
 
 const styles = StyleSheet.create({
-  drawerHeader: { padding: 20, backgroundColor: COLORS.darkGray, alignItems: 'center', marginBottom: 10 },
-  profileImageContainer: { marginBottom: 10 },
+  drawerHeader: { paddingVertical: 30, paddingHorizontal: 20, backgroundColor: COLORS.darkGray, alignItems: 'center', marginBottom: 10 },
+  profileImageContainer: { marginBottom: 12, position: 'relative' },
+  profileImage: { width: 90, height: 90, borderRadius: 45, borderWidth: 3, borderColor: COLORS.gold },
+  editIconContainer: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.gold, borderRadius: 15, width: 28, height: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COLORS.darkGray },
   userName: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
   accountNumber: { color: COLORS.gray, fontSize: 14 },
   drawerItemsContainer: { flex: 1 },
@@ -121,13 +156,3 @@ const styles = StyleSheet.create({
   drawerLabel: { fontSize: 15 },
   footer: { borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingBottom: 20 },
 });
-
-
-
-
-
-
-
-
-
-

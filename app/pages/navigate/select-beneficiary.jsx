@@ -30,7 +30,7 @@ const SAVED_TRANSFERS = [
   { id: '4', name: 'Babatunde John', bank: 'Access Bank', account: '0142356789', type: 'Other Bank' },
 ];
 
-const SavedTransfers = () => {
+const SelectBeneficiary = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleViewDetails = (item) => {
@@ -76,7 +76,7 @@ const SavedTransfers = () => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.black} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Saved Transfers</Text>
+        <Text style={styles.headerTitle}>Select Beneficiary</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -110,7 +110,7 @@ const SavedTransfers = () => {
   );
 };
 
-export default SavedTransfers;
+export default SelectBeneficiary;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },

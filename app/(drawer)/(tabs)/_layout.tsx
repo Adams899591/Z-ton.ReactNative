@@ -21,7 +21,7 @@ const ZenTonBanklayout = () => {
           backgroundColor: COLORS.darkGray, // Dark background for the tab bar
           borderTopWidth: 0, // Remove the default top border
           paddingBottom: 5, // Add some padding at the bottom for better visual
-          height: 75, // Fixed height for the tab bar
+          height: 70, // Fixed height for the tab bar
         },
         headerShown: false, // Hide the header by default for all tab screens
       }}

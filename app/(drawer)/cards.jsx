@@ -14,6 +14,7 @@ const CardsScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
+        
         {/* Card Visualization */}
         <View style={styles.creditCard}>
           <View style={styles.cardHeader}>

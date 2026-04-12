@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, TextInput, Switch } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, TextInput, Switch, Modal, FlatList, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRoute } from '@react-navigation/native';
 import { Link, useRouter } from 'expo-router';
 
 const COLORS = {
@@ -13,8 +12,26 @@ const COLORS = {
   lightGray: "#F3F4F6",
 };
 
+// Placeholder for bank data - in a real app, this would come from your Laravel backend API
+const bankList = [
+  { id: '1', name: 'Z-ton Bank' },
+  { id: '2', name: 'Zenith Bank' },
+  { id: '3', name: 'Access Bank' },
+  { id: '4', name: 'Guaranty Trust Bank (GTB)' },
+  { id: '5', name: 'First Bank of Nigeria' },
+  { id: '6', name: 'United Bank for Africa (UBA)' },
+  { id: '7', name: 'Fidelity Bank' },
+  { id: '8', name: 'Union Bank of Nigeria' },
+  { id: '9', name: 'Stanbic IBTC Bank' },
+  { id: '10', name: 'Ecobank Nigeria' },
+  { id: '11', name: 'Polaris Bank' },
+  { id: '12', name: 'Wema Bank' },
+];
+
 const TransferScreen = () => {
   const [selectedMode, setSelectedMode] = useState('Z-ton Bank');
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [selectedBank, setSelectedBank] = useState(null); // Stores the selected bank object { id, name }
   const [isScheduled, setIsScheduled] = useState(false);
   const router = useRouter();
 
@@ -65,16 +82,44 @@ const TransferScreen = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Select Bank (Conditional for 'Other Bank' mode) */}
+        <View style={styles.inputGroup} >
+          <Text style={styles.label}>Select Bank</Text>
+          <TouchableOpacity 
+            style={styles.pickerBox} 
+            onPress={() => setShowBankModal(true)}
+          >
+            <Text style={styles.pickerText}>{selectedBank ? selectedBank.name : "Choose Bank"}</Text>
+            <Ionicons name="chevron-down" size={20} color={COLORS.gray} />
+          </TouchableOpacity>
+        </View> 
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Select Destination Account</Text>
           <TextInput 
             style={styles.input}
             placeholder="Enter account number"
             placeholderTextColor={COLORS.gray}
-            keyboardType="numeric"
+            keyboardType="numeric" // Keep numeric for account number
           />
         </View>
 
+        {/* Horizontal Divider */}
+        <View style={styles.horizontalDivider} />
+
+        {/* Quick Select Beneficiary */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Quick Select Beneficiary</Text>
+          <TouchableOpacity 
+            style={styles.pickerBox} 
+            onPress={() => router.push("/pages/navigate/select-beneficiary")} // Link to saved transfers
+          >
+            <Text style={styles.pickerText}>Choose from Saved</Text>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
+          </TouchableOpacity>
+        </View>
+        
+        {/* Amount Input */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Amount</Text>
           <TextInput 
@@ -84,6 +129,7 @@ const TransferScreen = () => {
             keyboardType="numeric"
           />
         </View>
+        
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Transaction Description</Text>
@@ -119,9 +165,61 @@ const TransferScreen = () => {
         </View>
 
       </ScrollView>
+
+      {/* Bank Selection Modal */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={showBankModal}
+        onRequestClose={() => setShowBankModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowBankModal(false)} style={styles.modalCloseButton}>
+              <Ionicons name="close-outline" size={28} color={COLORS.black} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Select a Bank</Text>
+            <View style={{ width: 28 }} />{/* Placeholder for alignment */}
+          </View>
+          <TextInput 
+            style={styles.modalSearchInput}
+            placeholder="Search banks..."
+            placeholderTextColor={COLORS.gray}
+          />
+          <FlatList
+            data={bankList} // Your dynamic bank data goes here
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={styles.bankListItem}
+                onPress={() => {
+                  setSelectedBank(item);
+                  setShowBankModal(false);
+                }}
+              >
+                <Text style={styles.bankListItemText}>{item.name}</Text>
+                {selectedBank && selectedBank.id === item.id && (
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.gold} />
+                )}
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No banks found.</Text>
+              </View>
+            }
+          />
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
+
+
+
+
+
 
 export default TransferScreen
 
@@ -180,6 +278,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pickerText: { fontSize: 16, color: COLORS.black, fontWeight: '500' },
+
+  horizontalDivider: {
+    height: 1,
+    backgroundColor: COLORS.lightGray,
+    marginVertical: 25, // Adjust spacing as needed
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.lightGray,
+  },
+  modalCloseButton: { padding: 5 },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.black,
+  },
+  modalSearchInput: {
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    margin: 15,
+    fontSize: 16,
+    color: COLORS.black,
+  },
+  bankListItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  bankListItemText: { fontSize: 16, color: COLORS.black },
+
   scheduleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -200,6 +336,8 @@ const styles = StyleSheet.create({
   },
   continueButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
   fingerprintButton: { padding: 5 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
+  emptyText: { color: COLORS.gray, fontSize: 16 },
 });
 
 

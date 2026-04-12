@@ -17,6 +17,7 @@ function CustomDrawerContent(props) {
 
   return (
     <View style={{ flex: 1 }}>
+    
       <DrawerContentScrollView {...props} contentContainerStyle={{ backgroundColor: COLORS.white }}>
         {/* Header Profile Section */}
         <View style={styles.drawerHeader}>
@@ -29,6 +30,7 @@ function CustomDrawerContent(props) {
 
         {/* Drawer Items */}
         <View style={styles.drawerItemsContainer}>
+          
           {/* Automatically lists screens defined in the Drawer navigator */}
           <DrawerItemList {...props} />
           
@@ -68,7 +70,10 @@ function CustomDrawerContent(props) {
     </View>
   );
 }
+
 // pls help me make this section profetion so it show an image from unples annd also design it in shuch a where is has a icon where clicking on it the user choses either camara or gallery and it shouls also be edicted before saving 
+
+
 export default function DrawerLayout() {
   return (
     <Drawer

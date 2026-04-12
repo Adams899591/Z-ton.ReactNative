@@ -20,18 +20,17 @@ const loginScreen = () => {
     <>
     
     <SafeAreaView style={styles.container} >
-       {/* <StatusBar></StatusBar> */}
+
+         <StatusBar barStyle="light-content" backgroundColor={COLORS.darkGray} />
+         
       {/* Header: Back Button and Bank Logo */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={28} color={COLORS.white} />
+             <Ionicons name="arrow-back" size={28} color={COLORS.white} />
         </TouchableOpacity>
         
-        <View style={styles.logoContainer}>
-          <Image 
-            source={require("../../../assets/images/icon.jpg")} 
-            style={styles.logoImage} 
-          />
+        <View>
+          <Text style={styles.bankName}> Z-ton Bank </Text>
         </View>
       </View>
 
@@ -102,19 +101,20 @@ const loginScreen = () => {
 };
 
 export default loginScreen
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
   },
   header: {
+    // display: "flex",
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    height: 100,
+    paddingTop: 2,
+    height: 70,
     backgroundColor: COLORS.darkGray,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
@@ -124,17 +124,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  logoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: COLORS.white,
+  bankName:{
+    color: COLORS.white,
+    fontWeight: "bold",
+    fontSize: 20,
   },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  backButton: {
+    padding: 5,
   },
   content: {
     flex: 1,

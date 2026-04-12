@@ -83,7 +83,6 @@ export default function Index() {
 
           {/* Footer at the absolute bottom */}
           <View style={styles.footer}>
-            {/* <Text style={styles.footerText}>Zeton X Bank PLC</Text> */}
             <Text style={styles.footerSubText}>Z-ton X-L Bank PLC Licensed by Central Bank of Nigeria (CBN)</Text>
           </View>
         </View>
@@ -224,11 +223,6 @@ const styles = StyleSheet.create({
     paddingBottom: 60, // Increased padding to clear the system buttons/tab bar
     alignItems: 'center',
   },
-  // footerText: {
-  //   color: COLORS.white,
-  //   fontSize: 14,
-  //   fontWeight: '600',
-  // },
   footerSubText: {
     color: '#D1D5DB',
     fontSize: 10,

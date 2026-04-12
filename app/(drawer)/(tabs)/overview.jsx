@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Switch, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router'; // Assuming expo-router is used for navigation
+import { router, useRouter } from 'expo-router'; // Assuming expo-router is used for navigation
 
 const COLORS = {
   black: "#000000",
@@ -15,17 +15,13 @@ const OverviewScreen = () => {
   const [showBalance, setShowBalance] = useState(false); // Changed to false by default for privacy
 
   const toggleShowBalance = () => setShowBalance(previousState => !previousState);
+  const router = useRouter();
 
-  // Placeholder for navigation to history
-  const navigateToHistory = () => {
-    // Implement navigation to history screen
-    console.log('Navigate to History');
-    // router.push('/(drawer)/history'); // Example if a history route exists
-  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.darkGray} />
+
       <ScrollView contentContainerStyle={styles.content}>
         
         {/* Total Balance Section */}
@@ -92,7 +88,7 @@ const OverviewScreen = () => {
         </View>
 
         {/* History Navigation */}
-        <TouchableOpacity style={styles.historyButton} onPress={navigateToHistory}>
+        <TouchableOpacity style={styles.historyButton} onPress={() => router.push("/pages/navigate/transfer-history")}>
           <Text style={styles.historyButtonText}>View Transaction History</Text>
           <Ionicons name="arrow-forward-outline" size={20} color={COLORS.gold} />
         </TouchableOpacity>
@@ -138,8 +134,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   balanceCard: {
-    // backgroundColor: '#F9FAFB',
-    backgroundColor: COLORS.darkGray,
+    backgroundColor: '#F9FAFB',
+    // backgroundColor: COLORS.darkGray,
     marginHorizontal: 20,
     padding: 15,
     borderRadius: 15,
@@ -227,7 +223,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 10,
   },
   easyLinkButton: {
     backgroundColor: '#F9FAFB',

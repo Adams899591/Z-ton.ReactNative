@@ -79,7 +79,7 @@ const loginScreen = () => {
 
         {/* Sign In Button and Fingerprint Icon */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.signInButton} onPress={() => router.push("overview")}>
+          <TouchableOpacity style={styles.signInButton} onPress={() => router.replace("/(drawer)/(tabs)/overview")}>
             <Text style={styles.signInButtonText}>SIGN IN</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.fingerprintButton}>

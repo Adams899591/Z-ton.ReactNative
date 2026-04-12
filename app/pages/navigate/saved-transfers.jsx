@@ -1,14 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 
-const TransferScreen = () => {
+const savedTransfers = () => {
   return (
     <View>
-      <Text>T</Text>
+      <Text>saved-transfers</Text>
     </View>
   )
 }
 
-export default TransferScreen
+export default savedTransfers
 
 const styles = StyleSheet.create({})

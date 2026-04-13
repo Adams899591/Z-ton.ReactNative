@@ -9,6 +9,7 @@ import {
   StatusBar,
   TextInput,
   Alert,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -21,6 +22,7 @@ const COLORS = {
   darkGray: "#1F2937",
   lightGray: "#F3F4F6",
 };
+import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Sample data for saved beneficiaries
 const SAVED_TRANSFERS = [
@@ -30,8 +32,9 @@ const SAVED_TRANSFERS = [
   { id: '4', name: 'Babatunde John', bank: 'Access Bank', account: '0142356789', type: 'Other Bank' },
 ];
 
-const SavedTransfers = () => {
+const SelectBeneficiary = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [beneficiaries, setBeneficiaries] = useState(SAVED_TRANSFERS);
 
   const handleViewDetails = (item) => {
     Alert.alert(
@@ -44,31 +47,69 @@ const SavedTransfers = () => {
     );
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.transactionItem}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="person-circle-outline" size={28} color={COLORS.gold} />
-      </View>
-      <View style={styles.detailsContainer}>
-        <Text style={styles.transactionTitle}>{item.name}</Text>
-        <Text style={styles.transactionSubtitle}>{item.bank} • {item.account}</Text>
-      </View>
+ 
+  const handleDelete = (id) => {
+    Alert.alert(
+      "Delete Beneficiary",
+      "Are you sure you want to delete this saved beneficiary?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          onPress: () => setBeneficiaries(prevData => prevData.filter(item => item.id !== id)),
+          style: "destructive",
+        },
+      ]
+    );
+  };
+
+  // Function to render the delete button when swiping
+  const renderRightActions = (id, progress, dragX) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+    return (
       <TouchableOpacity 
-        style={styles.viewButton} 
-        onPress={() => handleViewDetails(item)}
+        style={styles.deleteAction} 
+        onPress={() => handleDelete(id)}
       >
-        <Text style={styles.viewButtonText}>View</Text>
+        <Animated.View style={[{ transform: [{ scale }]}] }>
+          <Ionicons name="trash-outline" size={28} color={COLORS.white} />
+        </Animated.View>
+        <Text style={styles.deleteActionText}>Delete</Text>
       </TouchableOpacity>
-    </View>
+    );
+  };
+
+  const renderItem = ({ item }) => (
+    <Swipeable
+      renderRightActions={(progress, dragX) => renderRightActions(item.id, progress, dragX)}
+      friction={2} // How much the swipeable will move with a swipe
+      rightThreshold={80} // How far the swipeable must be swiped to open to reveal actions
+    >
+      <TouchableOpacity style={styles.beneficiaryItem} activeOpacity={0.7} onPress={() => handleViewDetails(item)}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="person-circle-outline" size={28} color={COLORS.gold} />
+        </View>
+        <View style={styles.detailsContainer}>
+          <Text style={styles.beneficiaryName}>{item.name}</Text>
+          <Text style={styles.beneficiaryDetails}>{item.bank} • {item.account}</Text>
+        </View>
+        {/* Removed 'View' button as tapping the item can show details. The delete is via swipe. */}
+      </TouchableOpacity>
+    </Swipeable>
   );
 
-  const filteredData = SAVED_TRANSFERS.filter(item => 
+  const filteredData = beneficiaries.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     item.account.includes(searchQuery)
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
       
       {/* Professional Header */}
@@ -76,7 +117,7 @@ const SavedTransfers = () => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.black} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Saved Transfers</Text>
+        <Text style={styles.headerTitle}>Saved Beneficiary</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -106,11 +147,12 @@ const SavedTransfers = () => {
           </View>
         }
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 };
 
-export default SavedTransfers;
+export default SelectBeneficiary;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
@@ -137,12 +179,13 @@ const styles = StyleSheet.create({
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 16, color: COLORS.black },
   listContent: { paddingHorizontal: 20, paddingBottom: 20 },
-  transactionItem: { 
+  beneficiaryItem: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     paddingVertical: 15, 
-    borderBottomWidth: 1, 
-    borderBottomColor: COLORS.lightGray 
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.lightGray,
+    backgroundColor: COLORS.white, // Important for the swipeable background
   },
   iconContainer: { 
     width: 45, 
@@ -153,16 +196,24 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     marginRight: 15 
   },
-  detailsContainer: { flex: 1 },
-  transactionTitle: { fontSize: 15, fontWeight: '600', color: COLORS.black, marginBottom: 4 },
-  transactionSubtitle: { fontSize: 12, color: COLORS.gray },
-  viewButton: {
-    backgroundColor: COLORS.black,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  viewButtonText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
+  detailsContainer: { flex: 1, paddingRight: 10 }, // Added paddingRight to prevent text overlapping delete
+  beneficiaryName: { fontSize: 15, fontWeight: '600', color: COLORS.black, marginBottom: 4 },
+  beneficiaryDetails: { fontSize: 12, color: COLORS.gray },
   emptyContainer: { marginTop: 80, alignItems: 'center' },
   emptyText: { color: COLORS.gray, fontSize: 16, marginTop: 10 },
+  deleteAction: {
+    backgroundColor:"red",
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80, // Width of the delete button
+    height: '100%', // Ensure it covers the full height of the item
+    paddingTop: 10, // Add some padding for the icon
+    paddingBottom: 10, // Add some padding for the icon
+  },
+  deleteActionText: {
+    color: COLORS.white,
+    fontWeight: 'bold',
+    marginTop: 5,
+    fontSize: 12,
+  },
 });

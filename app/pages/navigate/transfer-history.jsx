@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const COLORS = {
   black: "#000000",
@@ -74,12 +75,41 @@ const TRANSACTIONS = [
 
 const TransferHistory = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [data, setData] = useState(TRANSACTIONS);
+  const [refreshing, setRefreshing] = useState(false);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Simulate a network request or data reload
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  };
+
+  const handleDelete = (id) => {
+    setData(prevData => prevData.filter(item => item.id !== id));
+  };
+
+  const renderRightActions = (id) => (
+    <TouchableOpacity 
+      style={styles.deleteAction} 
+      onPress={() => handleDelete(id)}
+    >
+      <Ionicons name="trash-outline" size={24} color={COLORS.white} />
+    </TouchableOpacity>
+  );
+
+   // this function renders each transaction item with swipeable delete action
   const renderItem = ({ item }) => {
     const isDebit = item.type === 'debit';
 
     return (
-      <TouchableOpacity style={styles.transactionItem}>
+      <Swipeable
+        renderRightActions={() => renderRightActions(item.id)}
+        friction={2}
+        rightThreshold={40}
+      >
+        <TouchableOpacity style={styles.transactionItem} activeOpacity={0.7}>
         <View style={[styles.iconContainer, { backgroundColor: isDebit ? COLORS.red + '15' : COLORS.green + '15' }]}>
           <Ionicons
             name={isDebit ? "arrow-up-outline" : "arrow-down-outline"}
@@ -98,16 +128,24 @@ const TransferHistory = () => {
           <Text style={styles.categoryText}>{item.category}</Text>
         </View>
       </TouchableOpacity>
+      </Swipeable>
     );
   };
 
+  const filteredTransactions = data.filter(item => 
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.date.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
-      
-      {/* Professional Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+        
+        {/* Professional Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.black} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transaction History</Text>
@@ -115,7 +153,7 @@ const TransferHistory = () => {
           <Ionicons name="options-outline" size={24} color={COLORS.gold} />
         </TouchableOpacity>
       </View>
-
+ 
       {/* Search Input */}
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={20} color={COLORS.gray} style={styles.searchIcon} />
@@ -130,18 +168,21 @@ const TransferHistory = () => {
 
       {/* Transaction List */}
       <FlatList
-        data={TRANSACTIONS}
+        data={filteredTransactions}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No transactions found.</Text>
           </View>
         }
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 };
 
@@ -173,7 +214,14 @@ const styles = StyleSheet.create({
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 16, color: COLORS.black },
   listContent: { paddingHorizontal: 20, paddingBottom: 20 },
-  transactionItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.lightGray },
+  transactionItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 15, 
+    borderBottomWidth: 1, 
+    borderBottomColor: COLORS.lightGray,
+    backgroundColor: COLORS.white 
+  },
   iconContainer: { width: 45, height: 45, borderRadius: 22.5, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   detailsContainer: { flex: 1 },
   transactionTitle: { fontSize: 15, fontWeight: '600', color: COLORS.black, marginBottom: 4 },
@@ -183,4 +231,11 @@ const styles = StyleSheet.create({
   categoryText: { fontSize: 10, color: COLORS.gray, textTransform: 'uppercase', letterSpacing: 0.5 },
   emptyContainer: { marginTop: 50, alignItems: 'center' },
   emptyText: { color: COLORS.gray, fontSize: 16 },
+  deleteAction: {
+    backgroundColor: COLORS.red,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+  },
 });

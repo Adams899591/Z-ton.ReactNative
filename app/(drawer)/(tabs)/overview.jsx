@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Switch, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Switch, StatusBar, FlatList, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useRouter } from 'expo-router'; // Assuming expo-router is used for navigation
 
@@ -11,12 +11,32 @@ const COLORS = {
   darkGray: "#1F2937",
 };
 
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = width * 0.85;
+
+const CARDS = [
+  // Replace these URIs with require('../assets/images/your-card.png') for local images
+  { id: '1', image:  require("../../../assets/images/card-1.png") },
+  { id: '2', image:  require("../../../assets/images/card-2.png") },
+  { id: '3', image:  require("../../../assets/images/card-3.png")  },
+  { id: '4', image:   require("../../../assets/images/card-4.png")  },
+];
+
 const OverviewScreen = () => {
   const [showBalance, setShowBalance] = useState(false); // Changed to false by default for privacy
 
   const toggleShowBalance = () => setShowBalance(previousState => !previousState);
   const router = useRouter();
 
+  const renderCard = ({ item }) => (
+    <TouchableOpacity activeOpacity={0.9} style={styles.cardContainer}>
+      <Image 
+        source={item.image} 
+        style={styles.cardImage} 
+        resizeMode="cover"
+      />
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -92,12 +112,31 @@ const OverviewScreen = () => {
           <Text style={styles.historyButtonText}>View Transaction History</Text>
           <Ionicons name="arrow-forward-outline" size={20} color={COLORS.gold} />
         </TouchableOpacity>
+      
+       
 
+        {/* Bank Cards Section */}
+        <Text style={styles.sectionTitle}>My Cards</Text>
+        <FlatList
+          data={CARDS}
+          renderItem={renderCard}
+          keyExtractor={item => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={CARD_WIDTH + 20}
+          decelerationRate="fast"
+          contentContainerStyle={styles.cardsList}
+        />
       </ScrollView>
-    </SafeAreaView>
-  );
+      </SafeAreaView>
+
+    )
 };
 
+
+
+
+ 
 export default OverviewScreen
 
 const styles = StyleSheet.create({
@@ -217,6 +256,7 @@ const styles = StyleSheet.create({
     color: COLORS.black,
     marginHorizontal: 20,
     marginBottom: 15,
+    marginTop: 25,
   },
   easyLinksGrid: {
     flexDirection: 'row',
@@ -257,4 +297,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  cardsList: {
+    paddingLeft: 20,
+    paddingRight: 10,
+    paddingBottom: 20,
+  },
+  cardContainer: {
+    width: CARD_WIDTH,
+    height: 200,
+    borderRadius: 20,
+    marginRight: 20,
+    elevation: 5,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    backgroundColor: COLORS.white,
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+  },
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 

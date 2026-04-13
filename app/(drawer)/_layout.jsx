@@ -68,7 +68,7 @@ function CustomDrawerContent(props) {
         <View style={styles.drawerItemsContainer}>
           
           {/* Automatically lists screens defined in the Drawer navigator */}
-          <DrawerItemList {...props} />
+          {/* <DrawerItemList {...props} /> */}
           
           <View style={styles.divider} />
           <Text style={styles.sectionLabel}>CARD BANK SERVICES</Text>
@@ -83,6 +83,12 @@ function CustomDrawerContent(props) {
             label="Virtual Cards"
             icon={({ size }) => <Ionicons name="phone-portrait-outline" size={size} color={COLORS.gold} />}
             onPress={() => {}}
+            labelStyle={styles.drawerLabel}
+          />
+          <DrawerItem
+            label="Profile & Security"
+            icon={({ size }) => <Ionicons name="person-outline" size={size} color={COLORS.gold} />}
+            onPress={() => router.push('/(drawer)/profile&security')}
             labelStyle={styles.drawerLabel}
           />
           <DrawerItem

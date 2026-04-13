@@ -37,6 +37,7 @@ const TransferScreen = () => {
   const [pin, setPin] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [bankSearchQuery, setBankSearchQuery] = useState(''); // New state for bank search
 
   // Handle number press for PIN input
   const handleNumberPress = (num) => {
@@ -64,7 +65,12 @@ const TransferScreen = () => {
       // You would typically navigate to a success screen or show a success message here
     }, 3000);
   };
-
+  
+  // Filtered bank list for the modal search
+  const filteredBankList = bankList.filter(bank => 
+    bank.name.toLowerCase().includes(bankSearchQuery.toLowerCase())
+  );
+  
 
   const router = useRouter();
 
@@ -142,7 +148,7 @@ const TransferScreen = () => {
         {/* Quick Select Beneficiary */}
         <TouchableOpacity 
           style={styles.quickSelectRow} 
-          onPress={() => router.push("/pages/navigate/select-beneficiary")}
+          onPress={() => router.push("/pages/navigate/saved-transfers")}
         >
           <Text style={styles.quickSelectText}>Quick Select Beneficiary? <Text style={styles.goldText}>Choose from Saved</Text></Text>
           <Ionicons name="chevron-forward" size={16} color={COLORS.gold} />
@@ -215,9 +221,11 @@ const TransferScreen = () => {
             style={styles.modalSearchInput}
             placeholder="Search banks..."
             placeholderTextColor={COLORS.gray}
+            value={bankSearchQuery}
+            onChangeText={setBankSearchQuery}
           />
           <FlatList
-            data={bankList} // Your dynamic bank data goes here
+            data={filteredBankList} // Use the filtered list here
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <TouchableOpacity 

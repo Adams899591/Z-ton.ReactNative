@@ -115,6 +115,17 @@ export default function DrawerLayout() {
         headerShown: true,
         headerStyle: { backgroundColor: COLORS.darkGray },
         headerTintColor: COLORS.white,
+        headerRight: () => (
+          <TouchableOpacity 
+            style={{ marginRight: 20, position: 'relative' }} 
+            onPress={() => router.push('/pages/views/global-notification')}
+          >
+            <Ionicons name="notifications-outline" size={26} color={COLORS.white} />
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>3</Text>
+            </View>
+          </TouchableOpacity>
+        ),
         drawerActiveBackgroundColor: COLORS.gold + '15', // Subtle gold background for active item
         drawerActiveTintColor: COLORS.gold,
         drawerInactiveTintColor: COLORS.black,
@@ -155,4 +166,18 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 12, color: COLORS.gray, marginLeft: 20, marginBottom: 10, fontWeight: 'bold' },
   drawerLabel: { fontSize: 15 },
   footer: { borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingBottom: 20 },
+  headerBadge: {
+    position: 'absolute',
+    right: -4,
+    top: -2,
+    backgroundColor: '#FF3B30',
+    borderRadius: 9,
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.darkGray,
+  },
+  headerBadgeText: { color: COLORS.white, fontSize: 10, fontWeight: 'bold' },
 });

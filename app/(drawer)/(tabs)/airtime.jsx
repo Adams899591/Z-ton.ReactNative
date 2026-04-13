@@ -12,6 +12,7 @@ const COLORS = {
 };
 
 const AirtimeScreen = () => {
+
   const [selectedOperator, setSelectedOperator] = useState('MTN');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [amount, setAmount] = useState('');
@@ -106,6 +107,7 @@ const AirtimeScreen = () => {
             keyboardType="numeric"
           />
         </View>
+        
         {/* Amount Input */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Amount</Text>

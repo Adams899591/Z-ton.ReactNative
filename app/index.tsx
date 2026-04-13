@@ -86,7 +86,7 @@ export default function Index() {
                 ))}
               </View>
             </View>
-            <TouchableOpacity style={styles.notificationButton}>
+            <TouchableOpacity style={styles.notificationButton} onPress={() => router.push("/pages/views/global-notification")}>
               <Ionicons name="notifications-outline" size={24} color="black" />
             </TouchableOpacity>
           </View>
@@ -97,7 +97,7 @@ export default function Index() {
               <Text style={styles.loginButtonTextWhite}>LOG IN</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.registerButton}>
+            <TouchableOpacity style={styles.registerButton}  onPress={() => router.push("./pages/views/register")}>
               <Text style={styles.registerButtonText}>REGISTER</Text>
             </TouchableOpacity>
           </View>

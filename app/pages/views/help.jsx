@@ -1,8 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from 'expo-router';
 
 const COLORS = {
   black: "#000000",
@@ -14,105 +13,52 @@ const COLORS = {
 };
 
 const HelpScreen = () => {
-  const router = useRouter();
-
-  const ContactItem = ({ icon, label, value, onPress }) => (
-    <TouchableOpacity style={styles.contactItem} onPress={onPress}>
-      <View style={styles.iconCircle}>
-        <Ionicons name={icon} size={20} color={COLORS.gold} />
-      </View>
-      <View style={styles.textContainer}>
-        <Text style={styles.itemLabel}>{label}</Text>
-        <Text style={styles.itemValue}>{value}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={COLORS.gray} />
-    </TouchableOpacity>
-  );
+  const helpOptions = [
+    { id: '1', title: 'Contact Us', icon: 'call-outline', route: '/pages/views/contact-us' },
+    { id: '2', title: 'About Z-ton Bank', icon: 'business-outline', route: '/pages/views/about-bank' },
+    { id: '3', title: 'About Developer', icon: 'code-slash-outline', route: '/pages/views/about-developer' },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
-      {/* Header with Back Button */}
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.darkGray} />
+
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Help & Support</Text>
-        <View style={{ width: 40 }} />
+        {/* Spacer for centering title */}
+        <View style={{ width: 24 }} />
       </View>
 
-        {/* Phone Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeading}>Phone</Text>
-          <View style={styles.horizontalLine} />
-          <ContactItem 
-            icon="call-outline" 
-            label="Customer Care" 
-            value="+234 800 123 4567" 
-            onPress={() => Linking.openURL('tel:+2348001234567')}
-          />
-          <ContactItem 
-            icon="call-outline" 
-            label="Technical Support" 
-            value="+234 800 987 6543" 
-            onPress={() => Linking.openURL('tel:+2348009876543')}
-          />
-          <ContactItem 
-            icon="alert-circle-outline" 
-            label="Report Fraud" 
-            value="+234 800 000 0000" 
-            onPress={() => Linking.openURL('tel:+2348000000000')}
-          />
-        </View>
+      <View style={styles.content}>
+        <Text style={styles.welcomeText}>How can we help you today?</Text>
 
-        {/* Email Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeading}>Email</Text>
-          <View style={styles.horizontalLine} />
-          <ContactItem 
-            icon="mail-outline" 
-            label="General Inquiries" 
-            value="support@ztonbank.com" 
-            onPress={() => Linking.openURL('mailto:support@ztonbank.com')}
-          />
-          <ContactItem 
-            icon="chatbox-ellipses-outline" 
-            label="Complaints" 
-            value="complaints@ztonbank.com" 
-            onPress={() => Linking.openURL('mailto:complaints@ztonbank.com')}
-          />
-        </View>
+        {helpOptions.map((item) => (
+          <TouchableOpacity 
+            key={item.id} 
+            style={styles.optionItem}
+            activeOpacity={0.7}
+            onPress={() => item.route && router.push(item.route)}
+          >
+            <View style={styles.optionLeft}>
+              <View style={styles.iconContainer}>
+                <Ionicons name={item.icon} size={22} color={COLORS.gold} />
+              </View>
+              <Text style={styles.optionText}>{item.title}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        {/* Social Media Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeading}>Social Media</Text>
-          <View style={styles.horizontalLine} />
-          <View style={styles.socialRow}>
-            <TouchableOpacity style={styles.socialButton}>
-              <Ionicons name="logo-facebook" size={32} color={COLORS.gold} />
-              <Text style={styles.socialText}>Facebook</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton}>
-              <Ionicons name="logo-twitter" size={32} color={COLORS.gold} />
-              <Text style={styles.socialText}>Twitter</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton}>
-              <Ionicons name="logo-instagram" size={32} color={COLORS.gold} />
-              <Text style={styles.socialText}>Instagram</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Live Chat Action */}
-        <TouchableOpacity style={styles.liveChatButton}>
-          <Ionicons name="chatbubbles-outline" size={24} color={COLORS.white} />
-          <Text style={styles.liveChatText}>Start Live Chat</Text>
-        </TouchableOpacity>
-        
-        <Text style={styles.availabilityText}>Our team is available 24/7 to assist you.</Text>
-      </ScrollView>
+      <View style={styles.footer}>
+        <Text style={styles.versionText}>Z-ton Mobile | Version 1.0.0</Text>
+      </View>
     </SafeAreaView>
-  )
+  );
 };
 
 export default HelpScreen;
@@ -121,29 +67,29 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    height: 70,
     backgroundColor: COLORS.darkGray,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.white },
+  headerTitle: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
   backButton: { padding: 5 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
-  section: { marginBottom: 30 },
-  sectionHeading: { fontSize: 20, fontWeight: 'bold', color: COLORS.black, marginBottom: 10 },
-  horizontalLine: { height: 1, backgroundColor: COLORS.lightGray, marginBottom: 15 },
-  contactItem: {
+  content: { flex: 1, padding: 25, paddingTop: 30 },
+  welcomeText: { fontSize: 24, fontWeight: 'bold', color: COLORS.black, marginBottom: 35 },
+  optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: COLORS.lightGray,
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
+    padding: 18,
+    borderRadius: 15,
+    marginBottom: 16,
   },
-  iconCircle: {
+  optionLeft: { flexDirection: 'row', alignItems: 'center' },
+  iconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -151,27 +97,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+    elevation: 1,
   },
-  textContainer: { flex: 1 },
-  itemLabel: { fontSize: 12, color: COLORS.gray, fontWeight: '500' },
-  itemValue: { fontSize: 15, color: COLORS.black, fontWeight: 'bold', marginTop: 2 },
-  socialRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 },
-  socialButton: { alignItems: 'center' },
-  socialText: { fontSize: 12, color: COLORS.black, marginTop: 5, fontWeight: '500' },
-  liveChatButton: {
-    backgroundColor: COLORS.black,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 18,
-    borderRadius: 12,
-    marginTop: 10,
-    elevation: 4,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  liveChatText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
-  availabilityText: { textAlign: 'center', color: COLORS.gray, fontSize: 13, marginTop: 20 },
+  optionText: { fontSize: 16, fontWeight: '600', color: COLORS.black },
+  footer: { padding: 20, alignItems: 'center' },
+  versionText: { color: COLORS.gray, fontSize: 12 },
 });

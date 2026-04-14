@@ -80,9 +80,9 @@ function CustomDrawerContent(props) {
             labelStyle={styles.drawerLabel}
           />
           <DrawerItem
-            label="Virtual Cards"
-            icon={({ size }) => <Ionicons name="phone-portrait-outline" size={size} color={COLORS.gold} />}
-            onPress={() => {}}
+            label="Account Details"
+            icon={({ size }) => <Ionicons name="information-circle-outline" size={size} color={COLORS.gold} />}
+            onPress={() => router.push('/(drawer)/account-details')}
             labelStyle={styles.drawerLabel}
           />
           <DrawerItem

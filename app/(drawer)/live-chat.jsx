@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,9 +10,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ImageBackground,
   Modal,
   Alert,
   ActivityIndicator,
+  Animated,
+  Vibration,
 } from 'react-native'; 
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -46,14 +49,103 @@ const MOCK_MESSAGES = [
   },
 ];
 
+const PlaybackWaveform = ({ isPlaying, isUser }) => {
+  const anims = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]).current;
+
+  useEffect(() => {
+    if (isPlaying) {
+      const animations = anims.map((anim, i) =>
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(anim, { toValue: 1, duration: 400 + i * 100, useNativeDriver: true }),
+            Animated.timing(anim, { toValue: 0, duration: 400 + i * 100, useNativeDriver: true }),
+          ])
+        )
+      );
+      Animated.parallel(animations).start();
+    } else {
+      anims.forEach((anim) => anim.stopAnimation(() => anim.setValue(0)));
+    }
+  }, [isPlaying]);
+
+  return (
+    <View style={styles.audioWaveformPlaceholder}>
+      {anims.map((anim, i) => (
+        <Animated.View
+          key={i}
+          style={[
+            styles.waveBar,
+            {
+              height: 10 + i * 3,
+              backgroundColor: isUser ? COLORS.gold : COLORS.darkGray,
+              transform: [{ scaleY: isPlaying ? anim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.4] }) : 1 }],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
+
 const LiveChatScreen = () => {
   const [messages, setMessages] = useState(MOCK_MESSAGES);
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef();
   
   // Audio & Video States
-  const [recording, setRecording] = useState(null);
+  const [recording, setRecording] = useState(null); // Used purely for UI feedback (red mic)
+  const recordingInstance = useRef(null); // Synchronous ref for the hardware object
+  const isHoldingMic = useRef(false); // Synchronous ref to track press state
+  const timerRef = useRef(null); // Timer reference for recording duration
   const [isVideoCallActive, setIsVideoCallActive] = useState(false);
+  const [playingId, setPlayingId] = useState(null);
+  const soundInstance = useRef(null);
+
+  // Animation & Timer States
+  const [recordingTime, setRecordingTime] = useState(0);
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const waveAnims = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+
+  // Pre-initialize permissions and audio mode on mount for instant response
+  useEffect(() => {
+    (async () => {
+      try {
+        await Audio.requestPermissionsAsync();
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+        // Setup audio mode once so it doesn't delay the first recording
+        await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      } catch (err) {
+        console.error("Initialization error:", err);
+      }
+    })();
+
+    return () => {
+      if (soundInstance.current) {
+        soundInstance.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  // Helper to format recording time (00:00)
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Starts the "boom boom" wave animation
+  const startWaveAnimation = useCallback(() => {
+    const animations = waveAnims.map((anim, i) => 
+      Animated.loop(Animated.sequence([Animated.timing(anim, { toValue: 1, duration: 300 + (i * 100), useNativeDriver: true }), Animated.timing(anim, { toValue: 0, duration: 300 + (i * 100), useNativeDriver: true })]))
+    );
+    Animated.parallel(animations).start();
+  }, [waveAnims]);
 
   // Handles sending standard text messages
   const sendMessage = () => {
@@ -67,7 +159,7 @@ const LiveChatScreen = () => {
       type: 'text',
     };
 
-    setMessages([...messages, newMessage]);
+    setMessages(prev => [...prev, newMessage]);
     setInputText('');
   };
 
@@ -102,39 +194,69 @@ const LiveChatScreen = () => {
 
   // Starts the audio recording process
   const startRecording = async () => {
+    isHoldingMic.current = true; // Mark that user is holding the button
     try {
-      // Request microphone permissions
-      const permission = await Audio.requestPermissionsAsync();
-      if (permission.status === 'granted') {
-        // Prepare the audio mode for recording
-        await Audio.setAudioModeAsync({ 
-          allowsRecordingIOS: true, 
-          playsInSilentModeIOS: true 
-        });
-        
-        // Create and start the recording
-        const { recording: newRecording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
-        );
-        setRecording(newRecording);
+      // Ensure we only start if the user is still holding (prevents ghost recordings)
+      if (!isHoldingMic.current) return;
+
+      // Create and start the recording immediately
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      
+      // Save to Ref so stopRecording can access it even if state hasn't updated
+      recordingInstance.current = newRecording;
+      setRecording(true); // UI feedback
+      setRecordingTime(0);
+      
+      // Start Pulse Animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 0, duration: 1000, useNativeDriver: true }),
+        ])
+      ).start();
+
+      // Start Waveform Animation
+      startWaveAnimation();
+
+      // Vibration feedback
+      if (Platform.OS !== 'web') Vibration.vibrate(50);
+
+      timerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
+
+      // Double-check: if user released during the async setup, stop it now
+      if (!isHoldingMic.current) {
+        await stopRecording();
       }
     } catch (err) {
-      Alert.alert('Failed to start recording', err.message);
+      console.error('Failed to start recording', err);
     }
   };
 
   // Stops the audio recording and adds it to the chat
   const stopRecording = async () => {
-    // Safety check: prevent calling methods on null if recording didn't start yet
-    if (!recording) return;
+    isHoldingMic.current = false; // Mark that user has released
+    
+    // If initialization hasn't finished, we can't stop yet
+    if (!recordingInstance.current) {
+      setRecording(null);
+      return;
+    }
+
+    // Stop UI and animations
+    if (timerRef.current) clearInterval(timerRef.current);
+    pulseAnim.setValue(0);
+    waveAnims.forEach(a => a.setValue(0));
 
     try {
-      // Stop the hardware and unload the recording
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
+      const rInstance = recordingInstance.current;
+      recordingInstance.current = null; // Clear ref immediately to prevent race conditions
+      setRecording(null); // Reset UI
       
-      // Reset the recording state so the UI updates
-      setRecording(null);
+      // Stop hardware and get URI
+      await rInstance.stopAndUnloadAsync();
+      const uri = rInstance.getURI();
 
       const newMessage = {
         id: Date.now().toString(),
@@ -151,10 +273,37 @@ const LiveChatScreen = () => {
   };
   
   // Helper to play back audio messages in the chat
-  const playAudio = async (uri) => {
+  const playAudio = async (item) => {
     try {
-      const { sound } = await Audio.Sound.createAsync({ uri });
-      await sound.playAsync();
+      // If we are already playing a sound
+      if (soundInstance.current) {
+        await soundInstance.current.stopAsync();
+        await soundInstance.current.unloadAsync();
+        soundInstance.current = null;
+        
+        // If the user clicked the one that was already playing, just stop it
+        if (playingId === item.id) {
+          setPlayingId(null);
+          return;
+        }
+      }
+
+      // Start playing the new sound
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: item.uri },
+        { shouldPlay: true }
+      );
+      
+      soundInstance.current = sound;
+      setPlayingId(item.id);
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          setPlayingId(null);
+          sound.unloadAsync();
+          soundInstance.current = null;
+        }
+      });
     } catch (err) {
       Alert.alert("Error", "Could not play audio.");
     }
@@ -182,21 +331,29 @@ const LiveChatScreen = () => {
           )}
 
           {item.type === 'audio' && (
-            <TouchableOpacity onPress={() => playAudio(item.uri)} style={styles.audioPlayer}>
-              <Ionicons name="play-circle" size={32} color={isUser ? COLORS.gold : COLORS.darkGray} />
-              <View style={styles.audioWaveformPlaceholder}>
-                <View style={[styles.waveBar, { height: 10 }]} />
-                <View style={[styles.waveBar, { height: 20 }]} />
-                <View style={[styles.waveBar, { height: 15 }]} />
-                <View style={[styles.waveBar, { height: 25 }]} />
-                <View style={[styles.waveBar, { height: 12 }]} />
-              </View>
+            <TouchableOpacity onPress={() => playAudio(item)} style={styles.audioPlayer}>
+              <Ionicons 
+                name={playingId === item.id ? "pause-circle" : "play-circle"} 
+                size={32} 
+                color={isUser ? COLORS.gold : COLORS.darkGray} 
+              />
+              <PlaybackWaveform isPlaying={playingId === item.id} isUser={isUser} />
             </TouchableOpacity>
           )}
 
-          <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.supportTimestamp]}>
-            {item.timestamp}
-          </Text>
+          <View style={styles.statusContainer}>
+            <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.supportTimestamp]}>
+              {item.timestamp}
+            </Text>
+            {isUser && (
+              <Ionicons 
+                name="checkmark-done" 
+                size={15} 
+                color={COLORS.gold} 
+                style={styles.checkIcon} 
+              />
+            )}
+          </View>
         </View>
       </View>
     );
@@ -228,42 +385,76 @@ const LiveChatScreen = () => {
         style={styles.chatContainer}
         keyboardVerticalOffset={90}
       >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.messageList}
-          onContentSizeChange={() => flatListRef.current.scrollToEnd()}
-        />
+        {/* Added a subtle geometric pattern background like WhatsApp */}
+        <ImageBackground 
+          source={{ uri: 'https://www.transparenttextures.com/patterns/diagmonds-light.png' }} 
+          style={styles.chatBackground}
+          imageStyle={{ opacity: 0.4, tintColor: COLORS.gold }}
+          resizeMode="repeat"
+        >
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.messageList}
+            onContentSizeChange={() => flatListRef.current.scrollToEnd()}
+          />
+        </ImageBackground>
 
         {/* Input Area */}
         <View style={styles.inputWrapper}>
-          <TouchableOpacity onPress={handleImagePicker} style={styles.attachButton}>
+          <TouchableOpacity onPress={handleImagePicker} style={styles.attachButton} disabled={!!recording}>
             <Ionicons name="add-circle" size={30} color={COLORS.gold} />
           </TouchableOpacity>
           
           <View style={styles.textInputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Type your message..."
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-            />
+            {recording ? (
+              <View style={styles.recordingStatusContainer}>
+                <View style={styles.redDot} />
+                <Text style={styles.recordingTimer}>{formatTime(recordingTime)}</Text>
+                <View style={styles.waveContainer}>
+                  {waveAnims.map((anim, i) => (
+                    <Animated.View 
+                      key={i} 
+                      style={[styles.waveBarAnimated, { transform: [{ scaleY: anim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.5] }) }] }]} 
+                    />
+                  ))}
+                </View>
+                <Text style={styles.swipeText}>Recording...</Text>
+              </View>
+            ) : (
+              <TextInput
+                style={styles.input}
+                placeholder="Type your message..."
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+              />
+            )}
+          </View>
+
+          <View style={styles.micButtonWrapper}>
+            {/* Pulse effect behind the mic */}
+            {recording && (
+              <Animated.View style={[styles.pulseCircle, { 
+                transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.5] }) }], 
+                opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }) 
+              }]} />
+            )}
             <TouchableOpacity 
               onPressIn={startRecording} 
-              onPressOut={stopRecording} 
-              style={styles.micButton}
+              onPressOut={stopRecording}
+              style={styles.micButtonCircle}
             >
-              <Ionicons name="mic" size={22} color={recording ? "#EF4444" : COLORS.gray} />
+              <Ionicons name="mic" size={24} color={recording ? COLORS.white : COLORS.gray} />
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity 
             onPress={sendMessage} 
             style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-            disabled={!inputText.trim()}
+            disabled={!inputText.trim() || !!recording}
           >
             <Ionicons name="send" size={20} color={COLORS.white} />
           </TouchableOpacity>
@@ -321,6 +512,7 @@ const styles = StyleSheet.create({
   actionIcon: { marginLeft: 20 },
   
   chatContainer: { flex: 1 },
+  chatBackground: { flex: 1, backgroundColor: COLORS.lightGray },
   messageList: { padding: 20 },
   
   messageWrapper: { flexDirection: 'row', marginBottom: 20, maxWidth: '80%' },
@@ -348,7 +540,15 @@ const styles = StyleSheet.create({
   userText: { color: COLORS.white },
   supportText: { color: COLORS.darkGray },
   
-  timestamp: { fontSize: 10, marginTop: 5, alignSelf: 'flex-end' },
+  statusContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    alignSelf: 'flex-end', 
+    marginTop: 4 
+  },
+  checkIcon: { marginLeft: 4 },
+
+  timestamp: { fontSize: 10 },
   userTimestamp: { color: 'rgba(255,255,255,0.6)' },
   supportTimestamp: { color: COLORS.gray },
 
@@ -375,10 +575,22 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   input: { flex: 1, paddingVertical: 10, fontSize: 15, color: COLORS.black, maxHeight: 100 },
-  micButton: { marginLeft: 10 },
+  
+  // Recording UI
+  recordingStatusContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', height: 45 },
+  redDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', marginRight: 8 },
+  recordingTimer: { fontSize: 14, fontWeight: 'bold', color: COLORS.darkGray, marginRight: 15 },
+  waveContainer: { flexDirection: 'row', alignItems: 'center', width: 40, justifyContent: 'space-between', marginRight: 10 },
+  waveBarAnimated: { width: 3, height: 15, backgroundColor: COLORS.gold, borderRadius: 2 },
+  swipeText: { fontSize: 13, color: COLORS.gray },
+
+  micButtonWrapper: { width: 45, height: 45, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  micButtonCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.lightGray },
+  pulseCircle: { position: 'absolute', width: 40, height: 40, borderRadius: 20, backgroundColor: '#EF4444' },
+
   sendButton: {
     backgroundColor: COLORS.gold,
-    width: 45,
+    width: 40,
     height: 45,
     borderRadius: 22.5,
     justifyContent: 'center',

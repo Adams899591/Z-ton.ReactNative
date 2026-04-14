@@ -104,6 +104,16 @@ const LiveChatScreen = () => {
   const isHoldingMic = useRef(false); // Synchronous ref to track press state
   const timerRef = useRef(null); // Timer reference for recording duration
   const [isVideoCallActive, setIsVideoCallActive] = useState(false);
+  const [isVoiceCallActive, setIsVoiceCallActive] = useState(false);
+
+  // Call management states
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const [isVideoMuted, setIsVideoMuted] = useState(false);
+  const [callStatus, setCallStatus] = useState('Connecting...');
+  const [callDuration, setCallDuration] = useState(0);
+  const callTimerRef = useRef(null);
+
   const [playingId, setPlayingId] = useState(null);
   const soundInstance = useRef(null);
 
@@ -131,6 +141,34 @@ const LiveChatScreen = () => {
       }
     };
   }, []);
+
+  // Simulation effect for both Voice and Video calls to simulate "Connecting" -> "Connected"
+  useEffect(() => {
+    let connectionTimeout;
+    const isActive = isVoiceCallActive || isVideoCallActive;
+
+    if (isActive) {
+      setCallStatus(isVoiceCallActive ? 'Ringing...' : 'Connecting...');
+      setCallDuration(0);
+      
+      connectionTimeout = setTimeout(() => {
+        setCallStatus('Connected');
+        callTimerRef.current = setInterval(() => {
+          setCallDuration(prev => prev + 1);
+        }, 1000);
+      }, 2500);
+    } else {
+      if (callTimerRef.current) clearInterval(callTimerRef.current);
+      setIsMuted(false);
+      setIsSpeakerOn(true);
+      setIsVideoMuted(false);
+    }
+
+    return () => {
+      if (connectionTimeout) clearTimeout(connectionTimeout);
+      if (callTimerRef.current) clearInterval(callTimerRef.current);
+    };
+  }, [isVoiceCallActive, isVideoCallActive]);
 
   // Helper to format recording time (00:00)
   const formatTime = (seconds) => {
@@ -166,6 +204,11 @@ const LiveChatScreen = () => {
   // Opens the professional video call overlay
   const handleVideoCall = () => {
     setIsVideoCallActive(true);
+  };
+
+  // Opens the voice call overlay
+  const handleVoiceCall = () => {
+    setIsVoiceCallActive(true);
   };
 
   // Handles image selection from the device gallery
@@ -374,6 +417,9 @@ const LiveChatScreen = () => {
           <TouchableOpacity onPress={handleVideoCall} style={styles.actionIcon}>
             <Ionicons name="videocam" size={24} color={COLORS.gold} />
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleVoiceCall} style={styles.actionIcon}>
+            <Ionicons name="call" size={24} color={COLORS.gold} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.actionIcon}>
             <Ionicons name="ellipsis-vertical" size={24} color={COLORS.gray} />
           </TouchableOpacity>
@@ -465,24 +511,78 @@ const LiveChatScreen = () => {
       <Modal visible={isVideoCallActive} animationType="slide" transparent={false}>
         <View style={styles.videoCallContainer}>
           <View style={styles.remoteVideo}>
-            <ActivityIndicator size="large" color={COLORS.gold} />
-            <Text style={styles.videoStatusText}>Connecting to Core Supporter...</Text>
+            {callStatus !== 'Connected' && <ActivityIndicator size="large" color={COLORS.gold} />}
+            <Text style={styles.videoStatusText}>
+              {callStatus === 'Connected' ? `Connected • ${formatTime(callDuration)}` : 'Connecting to Core Supporter...'}
+            </Text>
           </View>
           <View style={styles.localVideoSmall}>
-            <Ionicons name="person" size={40} color={COLORS.gray} />
+            {isVideoMuted ? (
+              <Ionicons name="videocam-off" size={40} color={COLORS.gray} />
+            ) : (
+              <Ionicons name="person" size={40} color={COLORS.gray} />
+            )}
           </View>
           <View style={styles.videoControls}>
-            <TouchableOpacity style={styles.videoActionBtn}>
-              <Ionicons name="mic-off" size={28} color={COLORS.white} />
+            <TouchableOpacity 
+              onPress={() => setIsMuted(!isMuted)}
+              style={[styles.videoActionBtn, isMuted && { backgroundColor: COLORS.gold }]}
+            >
+              <Ionicons name={isMuted ? "mic-off" : "mic"} size={28} color={COLORS.white} />
             </TouchableOpacity>
             <TouchableOpacity 
               onPress={() => setIsVideoCallActive(false)} 
               style={[styles.videoActionBtn, { backgroundColor: '#EF4444' }]}
             >
-              <Ionicons name="call" size={28} color={COLORS.white} />
+              <Ionicons name="call" size={28} color={COLORS.white} style={{ transform: [{ rotate: '135deg' }] }} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.videoActionBtn}>
-              <Ionicons name="videocam-off" size={28} color={COLORS.white} />
+            <TouchableOpacity 
+              onPress={() => setIsVideoMuted(!isVideoMuted)}
+              style={[styles.videoActionBtn, isVideoMuted && { backgroundColor: COLORS.gold }]}
+            >
+              <Ionicons name={isVideoMuted ? "videocam-off" : "videocam"} size={28} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Professional Voice Call Modal Overlay */}
+      <Modal visible={isVoiceCallActive} animationType="slide" transparent={false}>
+        <View style={styles.voiceCallContainer}>
+           <View style={styles.voiceCallHeader}>
+             <Ionicons name="shield-checkmark" size={18} color={COLORS.gold} />
+             <Text style={styles.secureText}>End-to-end encrypted</Text>
+           </View>
+           
+           <View style={styles.callerInfo}>
+             <View style={styles.avatarLarge}>
+                <Ionicons name="headset" size={60} color={COLORS.white} />
+             </View>
+             {callStatus !== 'Connected' && <ActivityIndicator size="large" color={COLORS.gold} style={{ marginBottom: 15 }} />}
+             <Text style={styles.callerName}>Core Support Team</Text>
+             <Text style={styles.callStatusText}>
+               {callStatus === 'Connected' ? formatTime(callDuration) : callStatus}
+             </Text>
+           </View>
+
+           <View style={styles.videoControls}>
+            <TouchableOpacity 
+              onPress={() => setIsSpeakerOn(!isSpeakerOn)}
+              style={[styles.videoActionBtn, !isSpeakerOn && { opacity: 0.5 }]}
+            >
+              <Ionicons name={isSpeakerOn ? "volume-high" : "volume-mute"} size={28} color={COLORS.white} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => setIsVoiceCallActive(false)} 
+              style={[styles.videoActionBtn, { backgroundColor: '#EF4444' }]}
+            >
+              <Ionicons name="call" size={28} color={COLORS.white} style={{ transform: [{ rotate: '135deg' }] }} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => setIsMuted(!isMuted)}
+              style={[styles.videoActionBtn, isMuted && { backgroundColor: COLORS.gold }]}
+            >
+              <Ionicons name={isMuted ? "mic-off" : "mic"} size={28} color={COLORS.white} />
             </TouchableOpacity>
           </View>
         </View>
@@ -605,4 +705,13 @@ const styles = StyleSheet.create({
   localVideoSmall: { position: 'absolute', top: 50, right: 20, width: 100, height: 150, backgroundColor: COLORS.darkGray, borderRadius: 15, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.gold },
   videoControls: { position: 'absolute', bottom: 50, flexDirection: 'row', width: '100%', justifyContent: 'space-evenly' },
   videoActionBtn: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+
+  // Voice Call Styles
+  voiceCallContainer: { flex: 1, backgroundColor: COLORS.userBubble, alignItems: 'center', paddingTop: 100 },
+  voiceCallHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 50 },
+  secureText: { color: COLORS.gray, marginLeft: 8, fontSize: 12 },
+  callerInfo: { alignItems: 'center' },
+  avatarLarge: { width: 120, height: 120, borderRadius: 60, backgroundColor: COLORS.gold, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  callerName: { color: COLORS.white, fontSize: 24, fontWeight: 'bold' },
+  callStatusText: { color: COLORS.gold, fontSize: 16, marginTop: 10 },
 });

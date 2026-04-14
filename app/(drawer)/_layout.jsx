@@ -92,9 +92,9 @@ function CustomDrawerContent(props) {
             labelStyle={styles.drawerLabel}
           />
           <DrawerItem
-            label="Card Settings"
-            icon={({ size }) => <Ionicons name="settings-outline" size={size} color={COLORS.gold} />}
-            onPress={() => {}}
+            label="Live Chat"
+            icon={({ size }) => <Ionicons name="chatbubble-outline" size={size} color={COLORS.gold} />}
+            onPress={() => router.push('/(drawer)/live-chat')}
             labelStyle={styles.drawerLabel}
           />
         </View>

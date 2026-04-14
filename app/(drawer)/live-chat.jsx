@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,9 +10,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Modal,
   Alert,
+  ActivityIndicator,
 } from 'react-native'; 
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
 
 const COLORS = {
   black: "#000000",
@@ -46,7 +50,12 @@ const LiveChatScreen = () => {
   const [messages, setMessages] = useState(MOCK_MESSAGES);
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef();
+  
+  // Audio & Video States
+  const [recording, setRecording] = useState(null);
+  const [isVideoCallActive, setIsVideoCallActive] = useState(false);
 
+  // Handles sending standard text messages
   const sendMessage = () => {
     if (inputText.trim().length === 0) return;
 
@@ -62,27 +71,98 @@ const LiveChatScreen = () => {
     setInputText('');
   };
 
+  // Opens the professional video call overlay
   const handleVideoCall = () => {
-    Alert.alert(
-      "Start Video Call",
-      "Would you like to start a secure video session with a core supporter?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Start Call", onPress: () => console.log("Initializing WebRTC Video...") }
-      ]
-    );
+    setIsVideoCallActive(true);
   };
 
-  const handleImagePicker = () => {
-    Alert.alert("Attachment", "Upload a document or image for verification.");
+  // Handles image selection from the device gallery
+  const handleImagePicker = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        const newMessage = {
+          id: Date.now().toString(),
+          uri: result.assets[0].uri,
+          sender: 'user',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: 'image',
+        };
+        setMessages(prev => [...prev, newMessage]);
+      }
+    } catch (err) {
+      Alert.alert("Error", "Could not access gallery.");
+    }
   };
 
-  const handleAudioRecord = () => {
-    Alert.alert("Voice Message", "Hold to record your query.");
+  // Starts the audio recording process
+  const startRecording = async () => {
+    try {
+      // Request microphone permissions
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status === 'granted') {
+        // Prepare the audio mode for recording
+        await Audio.setAudioModeAsync({ 
+          allowsRecordingIOS: true, 
+          playsInSilentModeIOS: true 
+        });
+        
+        // Create and start the recording
+        const { recording: newRecording } = await Audio.Recording.createAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        );
+        setRecording(newRecording);
+      }
+    } catch (err) {
+      Alert.alert('Failed to start recording', err.message);
+    }
+  };
+
+  // Stops the audio recording and adds it to the chat
+  const stopRecording = async () => {
+    // Safety check: prevent calling methods on null if recording didn't start yet
+    if (!recording) return;
+
+    try {
+      // Stop the hardware and unload the recording
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      
+      // Reset the recording state so the UI updates
+      setRecording(null);
+
+      const newMessage = {
+        id: Date.now().toString(),
+        uri: uri,
+        sender: 'user',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'audio',
+      };
+      setMessages(prev => [...prev, newMessage]);
+    } catch (error) {
+      console.error("Failed to stop recording:", error);
+      setRecording(null);
+    }
+  };
+  
+  // Helper to play back audio messages in the chat
+  const playAudio = async (uri) => {
+    try {
+      const { sound } = await Audio.Sound.createAsync({ uri });
+      await sound.playAsync();
+    } catch (err) {
+      Alert.alert("Error", "Could not play audio.");
+    }
   };
 
   const renderMessage = ({ item }) => {
     const isUser = item.sender === 'user';
+    
     return (
       <View style={[styles.messageWrapper, isUser ? styles.userWrapper : styles.supportWrapper]}>
         {!isUser && (
@@ -91,9 +171,29 @@ const LiveChatScreen = () => {
           </View>
         )}
         <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.supportBubble]}>
-          <Text style={[styles.messageText, isUser ? styles.userText : styles.supportText]}>
-            {item.text}
-          </Text>
+          {item.type === 'text' && (
+            <Text style={[styles.messageText, isUser ? styles.userText : styles.supportText]}>
+              {item.text}
+            </Text>
+          )}
+          
+          {item.type === 'image' && (
+            <Image source={{ uri: item.uri }} style={styles.messageImage} resizeMode="cover" />
+          )}
+
+          {item.type === 'audio' && (
+            <TouchableOpacity onPress={() => playAudio(item.uri)} style={styles.audioPlayer}>
+              <Ionicons name="play-circle" size={32} color={isUser ? COLORS.gold : COLORS.darkGray} />
+              <View style={styles.audioWaveformPlaceholder}>
+                <View style={[styles.waveBar, { height: 10 }]} />
+                <View style={[styles.waveBar, { height: 20 }]} />
+                <View style={[styles.waveBar, { height: 15 }]} />
+                <View style={[styles.waveBar, { height: 25 }]} />
+                <View style={[styles.waveBar, { height: 12 }]} />
+              </View>
+            </TouchableOpacity>
+          )}
+
           <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.supportTimestamp]}>
             {item.timestamp}
           </Text>
@@ -151,8 +251,12 @@ const LiveChatScreen = () => {
               onChangeText={setInputText}
               multiline
             />
-            <TouchableOpacity onPress={handleAudioRecord} style={styles.micButton}>
-              <Ionicons name="mic" size={22} color={COLORS.gray} />
+            <TouchableOpacity 
+              onPressIn={startRecording} 
+              onPressOut={stopRecording} 
+              style={styles.micButton}
+            >
+              <Ionicons name="mic" size={22} color={recording ? "#EF4444" : COLORS.gray} />
             </TouchableOpacity>
           </View>
 
@@ -165,6 +269,33 @@ const LiveChatScreen = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Professional Video Call Modal Overlay */}
+      <Modal visible={isVideoCallActive} animationType="slide" transparent={false}>
+        <View style={styles.videoCallContainer}>
+          <View style={styles.remoteVideo}>
+            <ActivityIndicator size="large" color={COLORS.gold} />
+            <Text style={styles.videoStatusText}>Connecting to Core Supporter...</Text>
+          </View>
+          <View style={styles.localVideoSmall}>
+            <Ionicons name="person" size={40} color={COLORS.gray} />
+          </View>
+          <View style={styles.videoControls}>
+            <TouchableOpacity style={styles.videoActionBtn}>
+              <Ionicons name="mic-off" size={28} color={COLORS.white} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => setIsVideoCallActive(false)} 
+              style={[styles.videoActionBtn, { backgroundColor: '#EF4444' }]}
+            >
+              <Ionicons name="call" size={28} color={COLORS.white} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.videoActionBtn}>
+              <Ionicons name="videocam-off" size={28} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -211,6 +342,8 @@ const styles = StyleSheet.create({
   userBubble: { backgroundColor: COLORS.userBubble, borderBottomRightRadius: 2 },
   supportBubble: { backgroundColor: COLORS.supportBubble, borderBottomLeftRadius: 2 },
   
+  messageImage: { width: 200, height: 200, borderRadius: 10, marginBottom: 5 },
+  
   messageText: { fontSize: 15, lineHeight: 20 },
   userText: { color: COLORS.white },
   supportText: { color: COLORS.darkGray },
@@ -218,6 +351,10 @@ const styles = StyleSheet.create({
   timestamp: { fontSize: 10, marginTop: 5, alignSelf: 'flex-end' },
   userTimestamp: { color: 'rgba(255,255,255,0.6)' },
   supportTimestamp: { color: COLORS.gray },
+
+  audioPlayer: { flexDirection: 'row', alignItems: 'center', width: 150 },
+  audioWaveformPlaceholder: { flexDirection: 'row', alignItems: 'center', marginLeft: 10, flex: 1, justifyContent: 'space-between' },
+  waveBar: { width: 3, backgroundColor: COLORS.gold, borderRadius: 2 },
 
   inputWrapper: {
     flexDirection: 'row',
@@ -248,4 +385,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sendButtonDisabled: { backgroundColor: COLORS.gray },
+
+  // Video Call Styles
+  videoCallContainer: { flex: 1, backgroundColor: COLORS.black, justifyContent: 'center', alignItems: 'center' },
+  remoteVideo: { flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%' },
+  videoStatusText: { color: COLORS.white, marginTop: 20, fontSize: 16 },
+  localVideoSmall: { position: 'absolute', top: 50, right: 20, width: 100, height: 150, backgroundColor: COLORS.darkGray, borderRadius: 15, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.gold },
+  videoControls: { position: 'absolute', bottom: 50, flexDirection: 'row', width: '100%', justifyContent: 'space-evenly' },
+  videoActionBtn: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
 });

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, ScrollView, Switch, StatusBar, FlatList, Dimensions, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useRouter } from 'expo-router'; // Assuming expo-router is used for navigation
+import EasyLinks from '../../../components/overview/easy-links';
+import { UserContext } from '../../UserContext';
 
 const COLORS = {
   black: "#000000",
@@ -24,6 +26,7 @@ const CARDS = [
 
 const OverviewScreen = () => {
   const [showBalance, setShowBalance] = useState(false); // Changed to false by default for privacy
+  const { user, setUser } = useContext(UserContext);
 
   const toggleShowBalance = () => setShowBalance(previousState => !previousState);
   const router = useRouter();
@@ -36,7 +39,7 @@ const OverviewScreen = () => {
         resizeMode="cover"
       />
     </TouchableOpacity>
-  );
+  ); 
 
   return (
     <SafeAreaView style={styles.container}>
@@ -49,7 +52,7 @@ const OverviewScreen = () => {
           <Text style={styles.balanceLabel}>Total Balance</Text>
           <View style={styles.balanceRow}>
             <Text style={styles.balanceAmount}>
-              {showBalance ? '$1,234.56' : '********'}
+              {showBalance ? `$${user.balance}` : '********'}
             </Text>
             <TouchableOpacity onPress={toggleShowBalance}>
               <Ionicons name={showBalance ? "eye-outline" : "eye-off-outline"} size={20} color={COLORS.gold} />
@@ -60,52 +63,19 @@ const OverviewScreen = () => {
         {/* Account Information */}
         <View style={styles.accountInfoContainer}>
           <Text style={styles.accountInfoLabel}>Account Number</Text>
-          <Text style={styles.accountInfoValue}>0123456789</Text>
+          <Text style={styles.accountInfoValue}>{user.account_number}</Text>
           <Text style={styles.accountInfoStatus}>Status: Active</Text>
         </View>
 
         {/* User Name Section */}
         <View style={styles.divider} />
-        <Text style={styles.userName}>Usman Adams</Text> 
+        <Text style={styles.userName}>{user.name}</Text> 
         <Text style={styles.lastLogin}>Last Login: 2026-04-09 10:30 AM</Text> 
         <View style={styles.divider} />
 
         {/* Easy Links Section */}
-        <Text style={styles.sectionTitle}>Easy Links</Text>
-        <View style={styles.easyLinksGrid}>
-          <TouchableOpacity style={styles.easyLinkButton}>
-            <Ionicons name="wallet-outline" size={24} color={COLORS.gold} />
-            <Text style={styles.easyLinkText}>Payment</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.easyLinkButton}>
-            <Ionicons name="swap-horizontal-outline" size={24} color={COLORS.gold} />
-            <Text style={styles.easyLinkText}>Transfer</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.easyLinkButton}>
-            <Ionicons name="tv-outline" size={24} color={COLORS.gold} />
-            <Text style={styles.easyLinkText}>Cable TV</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.easyLinkButton}>
-            <Ionicons name="card-outline" size={24} color={COLORS.gold} />
-            <Text style={styles.easyLinkText}>Cards</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.easyLinkButton}>
-            <Ionicons name="finger-print-outline" size={24} color={COLORS.gold} />
-            <Text style={styles.easyLinkText}>My BVN</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.easyLinkButton}>
-            <Ionicons name="settings-outline" size={24} color={COLORS.gold} />
-            <Text style={styles.easyLinkText}>Settings</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.easyLinkButton}>
-            <Ionicons name="help-circle-outline" size={24} color={COLORS.gold} />
-            <Text style={styles.easyLinkText}>Support</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.easyLinkButton}>
-            <Ionicons name="document-text-outline" size={24} color={COLORS.gold} />
-            <Text style={styles.easyLinkText}>Statements</Text>
-          </TouchableOpacity>
-        </View>
+        <EasyLinks styles={styles}/>
+
 
         {/* History Navigation */}
         <TouchableOpacity style={styles.historyButton} onPress={() => router.push("/pages/navigate/transfer-history")}>
@@ -127,6 +97,8 @@ const OverviewScreen = () => {
           decelerationRate="fast"
           contentContainerStyle={styles.cardsList}
         />
+
+
       </ScrollView>
       </SafeAreaView>
 

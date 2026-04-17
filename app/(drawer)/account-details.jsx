@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router'; // Assuming expo-router is used for navigation
+import { UserContext } from '../UserContext';
+import axios from 'axios';
+import { API_URL } from '../server/config';
 
 const COLORS = {
   black: "#000000",
@@ -12,22 +15,74 @@ const COLORS = {
   lightGray: "#F3F4F6", // A lighter gray for backgrounds
 };
 
-// Mock data for the user's account details
-const MOCK_ACCOUNT_DATA = {
-  accountHolder: 'Z-ton User',
-  accountNumber: '0123456789',
-  accountType: 'Savings Account',
-  bankName: 'Z-ton X-L Bank',
-  branch: 'Main Branch, City',
-  accountBalance: '1,234,567.89', // Example balance
-  currency: 'USD',
-  bvn: '221133445566', // Bank Verification Number
-  dateOpened: 'January 15, 2020',
-  status: 'Active',
-};
 
 const AccountDetailsScreen = () => {
   const [showBVN, setShowBVN] = useState(false);
+  const [morkAccountData, setMorkAccountData] = useState({
+                                                accountHolder: "",
+                                                accountNumber: "",
+                                                accountType: 'Savings Account',
+                                                bankName: "",
+                                                branch: 'Main Branch, City',
+                                                accountBalance: "", // Example balance
+                                                currency: 'USD',
+                                                bvn:  "", // Bank Verification Number
+                                                dateOpened:  "",
+                                                status: 'Active',
+                                            });
+
+  const { user, setUser } = useContext(UserContext);
+
+  // // format the date opened to a more readable format
+  // const date = new Date(morkAccountData.dateOpened);
+  // // Format the date to a more readable format, e.g., "January 15, 2020"
+  // const formattedDate = date.toLocaleDateString('en-US', {
+  //   year: 'numeric',
+  //   month: 'long',
+  //   day: 'numeric',
+  // });
+
+ 
+// 'January 15, 2020'
+ 
+
+// fetch user and the bank details
+useEffect(() => {
+
+   if(!user) return;  // only run if user id is set
+
+  const fetchUserAndBankDetails = async () => {
+
+       // send response to laravel to fetch the bank details of the user
+       const response = await axios.post(`${API_URL}/user/fetchBankDetails/${user.id}`);
+
+       const data = response.data; // extract data from the response
+
+       // if the response is successful and contains the expected data
+       if (data.status == "success") {
+
+                 const  resultUser = data.result[0];   //  the result is an array and we want the first item
+                 
+                  // Mock data for the user's account details
+                  setMorkAccountData({
+                        accountHolder: resultUser.name,
+                        accountNumber: resultUser.account_number,
+                        accountType: 'Savings Account',
+                        bankName: resultUser.bank?.name,
+                        branch: 'Main Branch, City',
+                        accountBalance: resultUser.balance, // Example balance
+                        currency: 'USD',
+                        bvn:  resultUser.bvn, // Bank Verification Number
+                        dateOpened:  resultUser.created_at, // Use the formatted date
+                        status: 'Active',
+                  });               
+       };
+   }; 
+
+   fetchUserAndBankDetails();
+}, [user])
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -40,11 +95,11 @@ const AccountDetailsScreen = () => {
           <Text style={styles.sectionTitle}>Account Holder</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Name</Text>
-            <Text style={styles.detailValue}>{MOCK_ACCOUNT_DATA.accountHolder}</Text>
+            <Text style={styles.detailValue}>{morkAccountData.accountHolder}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Status</Text>
-            <Text style={styles.detailValueStatus}>{MOCK_ACCOUNT_DATA.status}</Text>
+            <Text style={styles.detailValueStatus}>{morkAccountData.status}</Text>
           </View>
         </View>
 
@@ -53,15 +108,15 @@ const AccountDetailsScreen = () => {
           <Text style={styles.sectionTitle}>Account Summary</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Current Balance</Text>
-            <Text style={styles.detailValue}>{MOCK_ACCOUNT_DATA.currency} {MOCK_ACCOUNT_DATA.accountBalance}</Text>
+            <Text style={styles.detailValue}>{morkAccountData.currency} {morkAccountData.accountBalance}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Account Type</Text>
-            <Text style={styles.detailValue}>{MOCK_ACCOUNT_DATA.accountType}</Text>
+            <Text style={styles.detailValue}>{morkAccountData.accountType}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Date Opened</Text>
-            <Text style={styles.detailValue}>{MOCK_ACCOUNT_DATA.dateOpened}</Text>
+            <Text style={styles.detailValue}>{morkAccountData.dateOpened}</Text>
           </View>
         </View>
 
@@ -70,15 +125,15 @@ const AccountDetailsScreen = () => {
           <Text style={styles.sectionTitle}>Bank & Account Info</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Bank Name</Text>
-            <Text style={styles.detailValue}>{MOCK_ACCOUNT_DATA.bankName}</Text>
+            <Text style={styles.detailValue}>{morkAccountData.bankName}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Account Number</Text>
-            <Text style={styles.detailValue}>{MOCK_ACCOUNT_DATA.accountNumber}</Text>
+            <Text style={styles.detailValue}>{morkAccountData.accountNumber}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Branch</Text>
-            <Text style={styles.detailValue}>{MOCK_ACCOUNT_DATA.branch}</Text>
+            <Text style={styles.detailValue}>{morkAccountData.branch}</Text>
           </View>
         </View>
 
@@ -88,7 +143,7 @@ const AccountDetailsScreen = () => {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>BVN</Text>
             <TouchableOpacity onPress={() => setShowBVN(!showBVN)} style={styles.bvnToggle}>
-              <Text style={styles.detailValue}>{showBVN ? MOCK_ACCOUNT_DATA.bvn : '************'}</Text>
+              <Text style={styles.detailValue}>{showBVN ? morkAccountData.bvn : '************'}</Text>
               <Ionicons 
                 name={showBVN ? "eye-off-outline" : "eye-outline"} 
                 size={20} 

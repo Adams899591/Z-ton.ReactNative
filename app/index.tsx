@@ -61,6 +61,7 @@ export default function Index() {
       />
 
       <SafeAreaView style={styles.container}>
+        
         {/* Header with Logo at the Right */}
         <View style={styles.header}>
           <Image 

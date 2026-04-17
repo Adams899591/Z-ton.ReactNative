@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication'; // Import LocalAuthentication
+import AccountDetails from '../../components/profile&security/account-details';
 
 const COLORS = { // Define colors for consistency
   black: "#000000",
@@ -26,8 +27,8 @@ const COLORS = { // Define colors for consistency
 };
 
 const ProfileSecurityScreen = () => {
-  const [name, setName] = useState('Z-ton User');
-  const [email, setEmail] = useState('user@zton-bank.com');
+  // const [name, setName] = useState('Z-ton User');
+  // const [email, setEmail] = useState('user@zton-bank.com');
   const [isFingerprintEnabled, setIsFingerprintEnabled] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
@@ -189,7 +190,9 @@ const ProfileSecurityScreen = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         
-        <Text style={styles.sectionTitle}>Account Details</Text>
+        {/* Account Details */}
+        <AccountDetails styles={styles}/>
+        {/* <Text style={styles.sectionTitle}>Account Details</Text>
         
         <View style={styles.formGroup}>
           <Text style={styles.label}>Full Name</Text>
@@ -221,7 +224,10 @@ const ProfileSecurityScreen = () => {
 
         <TouchableOpacity style={styles.saveButton}>
           <Text style={styles.saveButtonText}>Save Changes</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
+
+
+
 
         <View style={styles.divider} />
 

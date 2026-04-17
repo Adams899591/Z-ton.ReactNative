@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Image, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Image, SafeAreaView, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { router } from 'expo-router';
+import axios from 'axios';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { UserContext } from "../../UserContext";
+import {API_URL} from "../../server/config"
 
 const COLORS = {
   black: "#000000",
@@ -12,9 +16,70 @@ const COLORS = {
 };
 
 const loginScreen = () => {
+  const { user, setUser } = useContext(UserContext);
   const [rememberMe, setRememberMe] = useState(false);
   const [accountNumber, setAccountNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false)
+  // error state 
+  const [accountNumberError, setAccountNumberError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+
+  // hand submit 
+  const handleSubmit = async () => {
+     setIsLoading(true);
+     setAccountNumberError("");
+     setPasswordError("");
+
+      try {
+            
+            // send request to laravel
+            const response =  await axios.post(`${API_URL}/auth/login`, {
+                account_number: accountNumber,
+                password: password,
+            });
+
+            const data = response.data ;
+
+            // if it success from laravel
+            if (data.status === "success") {
+
+                  // Save the user data to AsyncStorage for persistence across app restarts
+                  await AsyncStorage.setItem("user", JSON.stringify(data.user));
+
+                  // Save the user data to global context for access across the app
+                  setUser(data.user);
+                  
+                  // Successfully logged in
+                  router.replace("(drawer)/(tabs)/overview");
+
+                //  console.log(JSON.stringify(data, null, 2));
+            }
+
+           
+      }catch (error) { // handle errors from the API or network issues
+           const data = error.response?.data; // Safely extract response data if it exists
+          
+            // validation error from Laravel
+            if (data?.errors) { // check if there are validation errors in the response
+              setAccountNumberError(data.errors.account_number?.[0] || "");
+              setPasswordError(data.errors.password?.[0] || "");
+            } else {
+              // other errors (e.g. connection issues)
+              const message = data?.message || "Connection failed. Please check if the server is running.";
+              Alert.alert("Login Failed", message);
+            } 
+
+
+   } finally { // reset loading state after the login process is complete, regardless of success or failure
+     setIsLoading(false);
+   }
+
+
+  }
+
+
 
   return (
     <>
@@ -48,6 +113,11 @@ const loginScreen = () => {
             onChangeText={setAccountNumber}
             keyboardType="numeric"
           />
+          
+              {/* accountNumberError */}
+              {accountNumberError ? ( // Corrected syntax for optional chaining
+                  <Text style={{ color: "red", marginTop: 4 }}>{accountNumberError}</Text>
+                ) : null}
         </View>
 
         {/* Password Input */}
@@ -61,6 +131,11 @@ const loginScreen = () => {
             onChangeText={setPassword}
             secureTextEntry
           />
+
+              {/* passwordError */}
+              {passwordError ? ( // Corrected syntax for optional chaining
+                  <Text style={{ color: "red", marginTop: 4 }}>{passwordError}</Text>
+                ) : null}
         </View>
 
         {/* Remember Login Checkbox */}
@@ -78,12 +153,23 @@ const loginScreen = () => {
 
         {/* Sign In Button and Fingerprint Icon */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.signInButton} onPress={() => router.replace("/(drawer)/(tabs)/overview")}>
-            <Text style={styles.signInButtonText}>SIGN IN</Text>
+
+          {/* Sign In */}
+          <TouchableOpacity style={styles.signInButton} onPress={() => handleSubmit()}>
+            
+                {isLoading ? ( // Only show spinner if login is loading, not biometric success animation
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.signInButtonText}>SIGN IN</Text>
+                )}
+
           </TouchableOpacity>
+
+          {/* finger print */}
           <TouchableOpacity style={styles.fingerprintButton}>
             <Ionicons name="finger-print" size={44} color={COLORS.gold} />
           </TouchableOpacity>
+
         </View>
 
         <TouchableOpacity style={styles.forgotPassword}>
@@ -99,6 +185,8 @@ const loginScreen = () => {
     </>
   );
 };
+
+// pls i am try ing to mak the user global to be accessable on all pages pls i have already started but i may not be doing it well or placeing it it a position where it stays global pls can u help me fix it 
 
 export default loginScreen
  

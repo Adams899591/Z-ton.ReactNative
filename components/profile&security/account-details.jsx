@@ -14,7 +14,9 @@ const COLORS = { // Define colors for consistency
 };
 
 const AccountDetails = ({styles}) => {
-      const { user, setUser } = useContext(UserContext);
+
+     // Access user data and updater function from context
+      const { user, setUser } = useContext(UserContext); 
 
      const [isLoading, setIsLoading] = useState(false);
 
@@ -68,7 +70,7 @@ const AccountDetails = ({styles}) => {
 
 
 
-  return (
+  return ( 
      <>
         {/* Account Details */}
         <Text style={styles.sectionTitle}>Account Details</Text>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Drawer } from 'expo-router/drawer';
 import { DrawerContentScrollView, DrawerItemList, DrawerItem } from '@react-navigation/drawer';
@@ -6,7 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-
+import { UserContext } from '../UserContext';
+ 
 const COLORS = {
   black: "#000000",
   gold: "#B8860B",
@@ -15,9 +16,16 @@ const COLORS = {
   darkGray: "#1F2937",
 };
 
+// Custom Drawer Content with Profile Section and Navigation Items
 function CustomDrawerContent(props) {
+       
+        // Access user data and updater function from context
+        const { user, setUser } = useContext(UserContext); 
+
+  // Profile Image
   const [profileImage, setProfileImage] = useState('https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop');
 
+  // Function to handle image selection from camera or gallery
   const pickImage = async () => {
     Alert.alert(
       "Profile Picture",
@@ -30,11 +38,13 @@ function CustomDrawerContent(props) {
     );
   };
 
+  // Function to handle permission and image picking
   const openPicker = async (isCamera) => {
     const permission = isCamera 
       ? await ImagePicker.requestCameraPermissionsAsync() 
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
+      // Check if permission is granted
     if (!permission.granted) {
       Alert.alert("Permission Required", "We need access to your photos to change your profile picture.");
       return;
@@ -44,6 +54,7 @@ function CustomDrawerContent(props) {
       ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 })
       : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 });
 
+      // If the user didn't cancel the picker, update the profile image
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
     }
@@ -60,8 +71,8 @@ function CustomDrawerContent(props) {
               <Ionicons name="camera" size={16} color={COLORS.white} />
             </View>
           </TouchableOpacity>
-          <Text style={styles.userName}>Z-ton User</Text>
-          <Text style={styles.accountNumber}>Acc: 0123456789</Text>
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.accountNumber}>Acc: {user.account_number}</Text>
         </View>
 
         {/* Drawer Items */}
@@ -113,7 +124,11 @@ function CustomDrawerContent(props) {
   );
 }
 
+
+// Main Drawer Layout
 export default function DrawerLayout() {
+
+
   return (
     <Drawer
       drawerContent={(props) => <CustomDrawerContent {...props} />}

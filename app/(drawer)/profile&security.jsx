@@ -27,8 +27,6 @@ const COLORS = { // Define colors for consistency
 };
 
 const ProfileSecurityScreen = () => {
-  // const [name, setName] = useState('Z-ton User');
-  // const [email, setEmail] = useState('user@zton-bank.com');
   const [isFingerprintEnabled, setIsFingerprintEnabled] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
@@ -192,42 +190,7 @@ const ProfileSecurityScreen = () => {
         
         {/* Account Details */}
         <AccountDetails styles={styles}/>
-        {/* <Text style={styles.sectionTitle}>Account Details</Text>
-        
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Full Name</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color={COLORS.gold} />
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter your name"
-            />
-          </View>
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Email Address</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color={COLORS.gold} />
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save Changes</Text>
-        </TouchableOpacity> */}
-
-
-
+      
 
         <View style={styles.divider} />
 

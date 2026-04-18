@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router'; // Assuming expo-router is used for navigation
 import { UserContext } from '../UserContext';
@@ -14,43 +14,35 @@ const COLORS = {
   darkGray: "#1F2937",
   lightGray: "#F3F4F6", // A lighter gray for backgrounds
 };
-
+ 
 
 const AccountDetailsScreen = () => {
   const [showBVN, setShowBVN] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [morkAccountData, setMorkAccountData] = useState({
                                                 accountHolder: "",
                                                 accountNumber: "",
-                                                accountType: 'Savings Account',
+                                                accountType: '',
                                                 bankName: "",
-                                                branch: 'Main Branch, City',
+                                                branch: '',
                                                 accountBalance: "", // Example balance
-                                                currency: 'USD',
+                                                currency: '',
                                                 bvn:  "", // Bank Verification Number
                                                 dateOpened:  "",
-                                                status: 'Active',
+                                                status: '',
                                             });
 
   const { user, setUser } = useContext(UserContext);
-
-  // // format the date opened to a more readable format
-  // const date = new Date(morkAccountData.dateOpened);
-  // // Format the date to a more readable format, e.g., "January 15, 2020"
-  // const formattedDate = date.toLocaleDateString('en-US', {
-  //   year: 'numeric',
-  //   month: 'long',
-  //   day: 'numeric',
-  // });
-
- 
-// 'January 15, 2020'
  
 
 // fetch user and the bank details
 useEffect(() => {
 
    if(!user) return;  // only run if user id is set
+   setIsLoading(true);
 
+   
+   // Fetch user and bank details from the server
   const fetchUserAndBankDetails = async () => {
 
        // send response to laravel to fetch the bank details of the user
@@ -61,25 +53,34 @@ useEffect(() => {
        // if the response is successful and contains the expected data
        if (data.status == "success") {
 
-                 const  resultUser = data.result[0];   //  the result is an array and we want the first item
-                 
+                 const resultUser = data.result[0];
+
+                 // Format the date to "Month Day, Year" (e.g., January 15, 2020)
+                 const formattedDate = new Date(resultUser.created_at).toLocaleDateString('en-US', {
+                   year: 'numeric',
+                   month: 'long',
+                   day: 'numeric',
+                 });
+
                   // Mock data for the user's account details
                   setMorkAccountData({
                         accountHolder: resultUser.name,
                         accountNumber: resultUser.account_number,
-                        accountType: 'Savings Account',
+                        accountType: resultUser.account_type || 'Savings Account',
                         bankName: resultUser.bank?.name,
-                        branch: 'Main Branch, City',
+                        branch: resultUser.bank?.branch || 'Main Branch',
                         accountBalance: resultUser.balance, // Example balance
-                        currency: 'USD',
-                        bvn:  resultUser.bvn, // Bank Verification Number
-                        dateOpened:  resultUser.created_at, // Use the formatted date
-                        status: 'Active',
+                        currency: resultUser.currency || 'USD',
+                        bvn:  resultUser.bvn, // Bank Verification Number 
+                        dateOpened: formattedDate,
+                        status: resultUser.status || 'Active',
                   });               
        };
+
+       setIsLoading(false);
    }; 
 
-   fetchUserAndBankDetails();
+   fetchUserAndBankDetails(); // Call the function to fetch user and bank details when the component mounts or when the user changes
 }, [user])
 
 
@@ -90,71 +91,76 @@ useEffect(() => {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
-        {/* Account Holder Info */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Account Holder</Text>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Name</Text>
-            <Text style={styles.detailValue}>{morkAccountData.accountHolder}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Status</Text>
-            <Text style={styles.detailValueStatus}>{morkAccountData.status}</Text>
-          </View>
-        </View>
+        {isLoading ? (
+          <ActivityIndicator size="large" color={COLORS.gold} />
+        ) : (
+          <>
+            {/* Account Holder Info */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Account Holder</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Name</Text>
+                <Text style={styles.detailValue}>{morkAccountData.accountHolder}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Status</Text>
+                <Text style={styles.detailValueStatus}>{morkAccountData.status}</Text>
+              </View>
+            </View>
 
-        {/* Account Summary */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Account Summary</Text>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Current Balance</Text>
-            <Text style={styles.detailValue}>{morkAccountData.currency} {morkAccountData.accountBalance}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Account Type</Text>
-            <Text style={styles.detailValue}>{morkAccountData.accountType}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Date Opened</Text>
-            <Text style={styles.detailValue}>{morkAccountData.dateOpened}</Text>
-          </View>
-        </View>
+            {/* Account Summary */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Account Summary</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Current Balance</Text>
+                <Text style={styles.detailValue}>{morkAccountData.currency} {morkAccountData.accountBalance}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Account Type</Text>
+                <Text style={styles.detailValue}>{morkAccountData.accountType}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Date Opened</Text>
+                <Text style={styles.detailValue}>{morkAccountData.dateOpened}</Text>
+              </View>
+            </View>
 
-        {/* Bank & Account Details */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Bank & Account Info</Text>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Bank Name</Text>
-            <Text style={styles.detailValue}>{morkAccountData.bankName}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Account Number</Text>
-            <Text style={styles.detailValue}>{morkAccountData.accountNumber}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Branch</Text>
-            <Text style={styles.detailValue}>{morkAccountData.branch}</Text>
-          </View>
-        </View>
+            {/* Bank & Account Details */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Bank & Account Info</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Bank Name</Text>
+                <Text style={styles.detailValue}>{morkAccountData.bankName}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Account Number</Text>
+                <Text style={styles.detailValue}>{morkAccountData.accountNumber}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Branch</Text>
+                <Text style={styles.detailValue}>{morkAccountData.branch}</Text>
+              </View>
+            </View>
 
-        {/* Security Information */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Security Information</Text>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>BVN</Text>
-            <TouchableOpacity onPress={() => setShowBVN(!showBVN)} style={styles.bvnToggle}>
-              <Text style={styles.detailValue}>{showBVN ? morkAccountData.bvn : '************'}</Text>
-              <Ionicons 
-                name={showBVN ? "eye-off-outline" : "eye-outline"} 
-                size={20} 
-                color={COLORS.gray} 
-                style={{ marginLeft: 10 }}
-              />
-            </TouchableOpacity>
-          </View>
-          {/* Add more security details if needed, e.g., Last Password Change */}
-        </View>
-
+            {/* Security Information */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Security Information</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>BVN</Text>
+                <TouchableOpacity onPress={() => setShowBVN(!showBVN)} style={styles.bvnToggle}>
+                  <Text style={styles.detailValue}>{showBVN ? morkAccountData.bvn : '************'}</Text>
+                  <Ionicons 
+                    name={showBVN ? "eye-off-outline" : "eye-outline"} 
+                    size={20} 
+                    color={COLORS.gray} 
+                    style={{ marginLeft: 10 }}
+                  />
+                </TouchableOpacity>
+              </View>
+              {/* Add more security details if needed, e.g., Last Password Change */}
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

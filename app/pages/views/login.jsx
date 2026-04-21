@@ -4,7 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from "expo-secure-store";
 import { UserContext } from "../../UserContext";
+import * as Haptics from 'expo-haptics';
 import {API_URL} from "../../server/config"
 
 const COLORS = {
@@ -26,7 +29,7 @@ const loginScreen = () => {
   const [passwordError, setPasswordError] = useState('');
 
 
-  // hand submit 
+  // handle account number and password login
   const handleSubmit = async () => {
      setIsLoading(true);
      setAccountNumberError("");
@@ -45,6 +48,7 @@ const loginScreen = () => {
             // if it success from laravel
             if (data.status === "success") {
 
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                   // Save the user data to AsyncStorage for persistence across app restarts
                   await AsyncStorage.setItem("user", JSON.stringify(data.user));
 
@@ -54,7 +58,7 @@ const loginScreen = () => {
                   // Successfully logged in
                   router.replace("(drawer)/(tabs)/overview");
 
-                //  console.log(JSON.stringify(data, null, 2));
+                 console.log(JSON.stringify(data, null, 2));
             }
 
            
@@ -65,6 +69,7 @@ const loginScreen = () => {
             if (data?.errors) { // check if there are validation errors in the response
               setAccountNumberError(data.errors.account_number?.[0] || "");
               setPasswordError(data.errors.password?.[0] || "");
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             } else {
               // other errors (e.g. connection issues)
               const message = data?.message || "Connection failed. Please check if the server is running.";
@@ -79,6 +84,72 @@ const loginScreen = () => {
 
   }
 
+  // handle biometric login
+  const handleBiometricLogin = async () => {
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      // 1. Check if hardware supports biometrics and is enrolled
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+       // Alert user if biometrics is not available or not set up
+      if (!hasHardware || !isEnrolled) {
+        Alert.alert(
+          "Biometrics Unavailable",
+          "Your device does not support biometric authentication or it is not set up."
+        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        return;
+      }
+
+      // 2. Retrieve the secure token stored during setup
+      const biometricToken = await SecureStore.getItemAsync("biometric_token");
+
+      if (!biometricToken) {
+        Alert.alert(
+          "Not Enabled",
+          "Fingerprint login is not enabled. Please log in with your password first and enable it in Profile & Security settings."
+        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        return;
+      }
+
+     
+      // 3. Authenticate the user locally via hardware
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Login to Z-ton Bank',
+        cancelLabel: 'Cancel',
+      });
+ 
+      if (result.success) {
+        setIsLoading(true);
+        // 4. Send token to backend to authenticate user
+        const response = await axios.post(`${API_URL}/auth/login-biometric`, {
+          biometric_token: biometricToken,
+        });
+
+         const data = response.data; 
+        if (data.status === "success") {
+          await AsyncStorage.setItem("user", JSON.stringify(data.user));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setUser(data.user);
+          console.log(JSON.stringify(data.user, null, 2));
+          
+          router.replace("(drawer)/(tabs)/overview");
+        } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert("Login Failed", data.message || "Invalid biometric session.");
+        }
+      }
+    } catch (error) {
+      console.error("Biometric Login Error:", error);
+      const message = error.response?.data?.message || "Could not authenticate via biometrics.";
+      Alert.alert("Error", message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   return (
@@ -166,8 +237,11 @@ const loginScreen = () => {
           </TouchableOpacity>
 
           {/* finger print */}
-          <TouchableOpacity style={styles.fingerprintButton}>
-            <Ionicons name="finger-print" size={44} color={COLORS.gold} />
+          <TouchableOpacity style={styles.fingerprintButton} onPress={handleBiometricLogin}>
+  
+                  <Ionicons name="finger-print" size={44} color={COLORS.gold} />
+
+
           </TouchableOpacity>
 
         </View>
@@ -186,7 +260,6 @@ const loginScreen = () => {
   );
 };
 
-// pls i am try ing to mak the user global to be accessable on all pages pls i have already started but i may not be doing it well or placeing it it a position where it stays global pls can u help me fix it 
 
 export default loginScreen
  

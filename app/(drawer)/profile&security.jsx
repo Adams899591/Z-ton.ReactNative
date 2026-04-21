@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,6 +9,7 @@ import {
 import AccountDetails from '../../components/profile&security/account-details';
 import SecuritySettings from '../../components/profile&security/security-settings';
 import FingerprintVerificationModal from '../../components/profile&security/fingerprint-verification-modal';
+import { UserContext } from '../UserContext';
 
 const COLORS = { // Define colors for consistency
   black: "#000000",
@@ -21,16 +22,20 @@ const COLORS = { // Define colors for consistency
 
 const ProfileSecurityScreen = () => {
 
-  const [isFingerprintEnabled, setIsFingerprintEnabled] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
   
+       // Access user data and updater function from context
+        const { user, setUser } = useContext(UserContext); 
+  const [isFingerprintEnabled, setIsFingerprintEnabled] = useState(!!user.biometric_token);
+  const [modalVisible, setModalVisible] = useState(false);
+ 
+    
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         
               {/* Account Details Props */}
-              <AccountDetails styles={styles}/>
+              <AccountDetails styles={styles} user={user}/>
             
 
               <View style={styles.divider} />
@@ -38,6 +43,7 @@ const ProfileSecurityScreen = () => {
               {/* Security Settings Props */}
               <SecuritySettings 
                     styles={styles}
+                    user={user}
                     setModalVisible={setModalVisible} 
                     isFingerprintEnabled={isFingerprintEnabled}
                     setIsFingerprintEnabled={setIsFingerprintEnabled}   
@@ -48,6 +54,7 @@ const ProfileSecurityScreen = () => {
             {/* Fingerprint Verification Modal Props*/}
             <FingerprintVerificationModal
                 styles={styles}
+                user={user}
                 modalVisible={modalVisible}
                 setModalVisible={setModalVisible}
                 setIsFingerprintEnabled={setIsFingerprintEnabled}

@@ -1,8 +1,11 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Alert, StyleSheet, Text, View } from 'react-native'
 import React, { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { Switch } from 'react-native-gesture-handler'
 import * as LocalAuthentication from 'expo-local-authentication'; // Import LocalAuthentication
+import axios from 'axios';
+import * as Haptics from 'expo-haptics';
+import { API_URL } from '../../app/server/config';
 const COLORS = { // Define colors for consistency
   black: "#000000",
   gold: "#B8860B",
@@ -12,7 +15,7 @@ const COLORS = { // Define colors for consistency
   lightGray: "#F9FAFB",
 };
 
-const SecuritySettings = ({styles,setModalVisible,isFingerprintEnabled,setIsFingerprintEnabled}) => {
+const SecuritySettings = ({styles,user,setModalVisible,isFingerprintEnabled,setIsFingerprintEnabled}) => {
 
   // Function to check biometric availability and enrollment
   const checkBiometricAvailability = async () => {
@@ -30,8 +33,34 @@ const SecuritySettings = ({styles,setModalVisible,isFingerprintEnabled,setIsFing
     return true;
   };
 
+
+  // this function send request to laravel to disable user biometric
+   const handleBiometricDisable = async () => {
+    // console.log("working");
+    
+        try {
+             
+            // send request to laravel
+             const response =  await axios.post(`${API_URL}/auth/disable-biometric/${user.id}`);
+             const data = response.data;
+
+             // if request is successful set the biometric switch button to false
+              if (data.status == "success") {
+                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                 setIsFingerprintEnabled(false)
+              }
+
+        } catch (error) {
+          console.log(error);
+           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+           Alert.alert("Error", "An error occurred while disabling biometric authentication.");
+        }
+   }
+
+
   // function to handle toggling the fingerprint switch, which will check for biometric availability and show the modal if enabling, or disable if turning off
   const toggleFingerprint = (value) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (value) { // If trying to enable fingerprint
       checkBiometricAvailability().then(canAuthenticate => {
         if (canAuthenticate) {
@@ -39,9 +68,21 @@ const SecuritySettings = ({styles,setModalVisible,isFingerprintEnabled,setIsFing
         } else {
           setIsFingerprintEnabled(false); // Keep switch off if biometrics are not available
         }
-      });
+      }); 
     } else { // If trying to disable fingerprint
-      setIsFingerprintEnabled(false);
+
+           // Show confirmation alert before disabling fingerprint
+          Alert.alert("Warning", "Are you sure you want to disable fingerprint from this device?",[
+            {
+              text: "Cancle" ,
+              onPress: () => {}
+            },
+            {
+              text: "Yes",
+              onPress: () => handleBiometricDisable()
+            }
+          ]);
+
     }
   };
 
@@ -70,4 +111,3 @@ const SecuritySettings = ({styles,setModalVisible,isFingerprintEnabled,setIsFing
 }
 
 export default SecuritySettings
-

@@ -3,6 +3,7 @@ import React, { useContext, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons';
 import { UserContext } from '../../app/UserContext';
 import axios from 'axios';
+import * as Haptics from 'expo-haptics';
 import { API_URL } from '../../app/server/config';
 const COLORS = { // Define colors for consistency
   black: "#000000",
@@ -13,10 +14,7 @@ const COLORS = { // Define colors for consistency
   lightGray: "#F9FAFB",
 };
 
-const AccountDetails = ({styles}) => {
-
-     // Access user data and updater function from context
-      const { user, setUser } = useContext(UserContext); 
+const AccountDetails = ({styles,user}) => {
 
      const [isLoading, setIsLoading] = useState(false);
 
@@ -47,6 +45,7 @@ const AccountDetails = ({styles}) => {
                 if (data.status == "success") {
 
                   //  Save the user data to global context for access across the app
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                   setUser(data.user);
 
                    Alert.alert("Updated", data.message);
@@ -55,6 +54,7 @@ const AccountDetails = ({styles}) => {
             }catch (error) { // handle errors from the API or network issues
                        const data = error.response?.data; // Safely extract response data if it exists
                       
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                         // validation error from Laravel
                         if (data?.errors) { // check if there are validation errors in the response
                           setNameError(data.errors.name?.[0] || "");
@@ -125,4 +125,3 @@ const AccountDetails = ({styles}) => {
 }
 
 export default AccountDetails
-

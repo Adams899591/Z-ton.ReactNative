@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
   Text,
   View,
@@ -10,6 +10,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication'; // Import LocalAuthentication
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
+import * as Haptics from 'expo-haptics';
+import axios from 'axios';
+import { UserContext } from '../../app/UserContext';
+import { API_URL } from '../../app/server/config';
 
 const COLORS = { // Define colors for consistency
   black: "#000000",
@@ -21,8 +27,9 @@ const COLORS = { // Define colors for consistency
 };
 
 
-const FingerprintVerificationModal = ({styles,modalVisible,setModalVisible,setIsFingerprintEnabled}) => {
+const FingerprintVerificationModal = ({user,styles,modalVisible,setModalVisible,setIsFingerprintEnabled}) => {
 
+  // const { user, setUser } = useContext(UserContext);
   const [isHolding, setIsHolding] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
@@ -70,35 +77,6 @@ const FingerprintVerificationModal = ({styles,modalVisible,setModalVisible,setIs
     }
   };
 
-  // function to handle the biometric authentication process when the user successfully holds the fingerprint icon for 5 seconds, which will attempt to authenticate and provide feedback based on the result
-  const handleBiometricAuthentication = async () => {
-    cleanupTimer();
-    setIsAuthenticating(true);
-    setHoldProgress(1);
-    try {   
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Authenticate to enable Fingerprint Login',
-        cancelLabel: 'Cancel',
-      });
-
-      if (result.success) {
-        setIsFingerprintEnabled(true);
-        Alert.alert("Success", "Fingerprint authentication enabled!");
-      } else if (result.error === 'user_cancel') {
-        Alert.alert("Cancelled", "Fingerprint authentication cancelled.");
-      } else {
-        Alert.alert("Authentication Failed", "Could not authenticate with fingerprint. Please try again.");
-      }
-    } catch (error) {
-      console.error("Biometric authentication error:", error);
-      Alert.alert("Error", "An error occurred during biometric authentication.");
-    } finally {
-      setIsAuthenticating(false);
-      setIsHolding(false);
-      setModalVisible(false);
-      stopScanningAnimation();
-    }
-  };
 
   // useEffect to clean up timers and stop animations when the modal is closed, ensuring that if the user cancels the process or if the component unmounts, there are no lingering timers or animations running in the background
   useEffect(() => {
@@ -131,6 +109,7 @@ const FingerprintVerificationModal = ({styles,modalVisible,setModalVisible,setIs
     // function to handle press in and out for the fingerprint icon (for visual feedback and hold-to-authenticate)
     function handlePressIn() {
         if (isAuthenticating) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setIsHolding(true);
         startScanningAnimation();
         cleanupTimer();
@@ -148,6 +127,69 @@ const FingerprintVerificationModal = ({styles,modalVisible,setModalVisible,setIs
         setHoldProgress(0);
         stopScanningAnimation();
     }
+
+
+  // Function to generate a 16-character random string (The "Crystal")
+  const generateBiometricToken = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    for (let i = 0; i < 16; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+
+    // function to handle the biometric authentication process when the user successfully holds the fingerprint icon for 5 seconds, which will attempt to authenticate and provide feedback based on the result
+  const handleBiometricAuthentication = async () => {
+    cleanupTimer();
+    setIsAuthenticating(true);
+    setHoldProgress(1);
+    try {   
+
+      // this call the main finger print from the user ios 
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate to enable Fingerprint Login',
+        cancelLabel: 'Cancel',
+      });
+
+      if (result.success) {
+
+          //  ================ this part handles submission to laravel ==================
+
+          const newToken = generateBiometricToken();  // function that generate token 
+          
+          // 1. Save the biometric token to  SecureStore
+          await SecureStore.setItemAsync("biometric_token", newToken);
+     
+          // 2. Save the token locally on the device
+          await AsyncStorage.setItem("biometric_token", newToken);
+
+          // 3. Send the token to Laravel to link it with this user
+          await axios.post(`${API_URL}/auth/enable-biometric/${user.id}`, {
+            biometric_token: newToken,
+          });
+
+            // =============================
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setIsFingerprintEnabled(true);
+        Alert.alert("Success", "Fingerprint authentication enabled!");
+      } else if (result.error === 'user_cancel') {
+        Alert.alert("Cancelled", "Fingerprint authentication cancelled.");
+      } else {
+        Alert.alert("Authentication Failed", "Could not authenticate with fingerprint. Please try again.");
+      }
+    } catch (error) {
+      console.error("Biometric authentication error:", error);
+      Alert.alert("Error", "An error occurred during biometric authentication.");
+    } finally {
+      setIsAuthenticating(false);
+      setIsHolding(false);
+      setModalVisible(false);
+      stopScanningAnimation();
+    } 
+  };
+
 
 
 return (
@@ -205,4 +247,3 @@ return (
 }
 
 export default FingerprintVerificationModal
-

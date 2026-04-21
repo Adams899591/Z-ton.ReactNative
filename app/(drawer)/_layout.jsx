@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { UserContext } from '../UserContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
  
 const COLORS = {
   black: "#000000",
@@ -59,6 +60,19 @@ function CustomDrawerContent(props) {
       setProfileImage(result.assets[0].uri);
     }
   };
+
+  // Function to loug user out 
+  function haldlesUserLogout() {
+
+        // Save the user data to AsyncStorage for persistence across app restarts
+         AsyncStorage.removeItem("user");
+
+        // Save the user data to global context for access across the app
+        setUser(false);
+
+        // direct user to login page
+        router.replace('/')
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -116,7 +130,7 @@ function CustomDrawerContent(props) {
         <DrawerItem
           label="Logout"
           icon={({ size }) => <Ionicons name="log-out-outline" size={size} color="#FF3B30" />}
-          onPress={() => router.replace('/')}
+          onPress={() => haldlesUserLogout()}
           labelStyle={{ color: '#FF3B30', fontWeight: 'bold' }}
         />
       </View>

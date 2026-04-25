@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,10 +8,16 @@ import {
   TouchableOpacity,
   StatusBar,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
+import {UserContext} from "../../UserContext";
+ import axios from 'axios';
+ import { API_URL } from '../../server/config';
+
 
 const COLORS = {
   black: "#000000",
@@ -24,76 +30,98 @@ const COLORS = {
   green: "#34C759",
 };
 
-// Sample data for transactions
-const TRANSACTIONS = [
-  {
-    id: '1',
-    type: 'debit',
-    title: 'Transfer to Usman Adams',
-    amount: '-$200.00',
-    date: '10 Apr 2026',
-    time: '02:30 PM',
-    category: 'Transfer',
-  },
-  {
-    id: '2',
-    type: 'credit',
-    title: 'Salary Deposit',
-    amount: '+$3,500.00',
-    date: '05 Apr 2026',
-    time: '09:00 AM',
-    category: 'Deposit',
-  },
-  {
-    id: '3',
-    type: 'debit',
-    title: 'Electricity Bill',
-    amount: '-$45.20',
-    date: '03 Apr 2026',
-    time: '11:15 AM',
-    category: 'Bills',
-  },
-  {
-    id: '4',
-    type: 'debit',
-    title: 'MTN Airtime Top-up',
-    amount: '-$10.00',
-    date: '01 Apr 2026',
-    time: '08:45 PM',
-    category: 'Airtime',
-  },
-  {
-    id: '5',
-    type: 'credit',
-    title: 'Refund from Amazon',
-    amount: '+$25.50',
-    date: '28 Mar 2026',
-    time: '04:20 PM',
-    category: 'Refund',
-  },
-];
 
 const TransferHistory = () => {
+    //  Access user data and updater function from context
+  const { user, setUser } = useContext(UserContext); 
   const [searchQuery, setSearchQuery] = useState('');
-  const [data, setData] = useState(TRANSACTIONS);
+  const [data, setData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onRefresh = () => {
+  // function to fetch transactions of the user from the server
+  const fetchUserTransactions = async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+
+    try {
+      // send response to laravel to fetch the transactions of the user
+      const response = await axios.post(`${API_URL}/user/fetchTransections/${user.id}`);
+      const responseData = response.data; // extract data from the response
+
+      if (responseData.status === "success" && responseData.result) {
+        // Extract the transactions array from the result object
+        const rawTransactions = responseData.result.transactions || [];
+
+        // Map the raw transactions to the format needed for the UI
+        const formattedTransactions = rawTransactions.map(tx => {
+          const dateObj = new Date(tx.created_at);
+
+          return {
+            id: tx.id.toString(),
+            type: tx.type, // 'debit' or 'credit'
+            title: tx.title,
+            // Formatting amount to include +/- sign and currency symbol
+            amount: `${tx.type === 'debit' ? '-' : '+'}$${parseFloat(tx.amount).toLocaleString()}`,
+            // Formatting date to '21 Apr 2026'
+            date: dateObj.toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            }),
+            // Formatting time to '04:43 AM'
+            time: dateObj.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+            category: tx.category || 'General',
+          };
+        });
+
+        // Update state with the formatted transactions
+        setData(formattedTransactions);
+
+        setIsLoading(false)
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    }finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  // Fetch transactions when component mounts or user changes
+  useEffect(() => {
+    fetchUserTransactions(); // Call the function to fetch transactions when the component mounts or when the user changes
+  }, [user?.id]);
+
+
+  // this handles OnRefresh 
+  const onRefresh = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
-    // Simulate a network request or data reload
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
+    await fetchUserTransactions(); //  Call the function to fetch transactions when the user performs pull-to-refresh
+    setRefreshing(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  const handleDelete = (id) => {
+  // this handles delete action
+  const handleDeleteTransection = async (id) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      // send response to laravel to delete the transaction with the given id
+      await axios.delete(`${API_URL}/user/deleteTransaction/${id}`);
+
+    // update the ui
     setData(prevData => prevData.filter(item => item.id !== id));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
+  // this function renders the right action (delete button) when a transaction item is swiped
   const renderRightActions = (id) => (
     <TouchableOpacity 
       style={styles.deleteAction} 
-      onPress={() => handleDelete(id)}
+      onPress={() => handleDeleteTransection(id)}
     >
       <Ionicons name="trash-outline" size={24} color={COLORS.white} />
     </TouchableOpacity>
@@ -132,20 +160,24 @@ const TransferHistory = () => {
     );
   };
 
+  // Filter transactions based on search query
   const filteredTransactions = data.filter(item => 
-    item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.date.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    item.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    item.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.date?.toLowerCase().includes(searchQuery.toLowerCase())
+   ); 
+
+
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+
+      {/* Professional Header - Always Visible */}
+      <View style={styles.header}>
         
-        {/* Professional Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.black} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transaction History</Text>
@@ -154,7 +186,7 @@ const TransferHistory = () => {
         </TouchableOpacity>
       </View>
  
-      {/* Search Input */}
+      {/* Search Input - Always Visible */}
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={20} color={COLORS.gray} style={styles.searchIcon} />
         <TextInput
@@ -166,21 +198,28 @@ const TransferHistory = () => {
         />
       </View>
 
-      {/* Transaction List */}
-      <FlatList
-        data={filteredTransactions}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No transactions found.</Text>
-          </View>
-        }
-      />
+      {isLoading && !refreshing ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.gold} />
+          <Text style={styles.loadingText}>Fetching transactions...</Text>
+        </View>
+      ) : (
+        /* Transaction List */
+        <FlatList
+          data={filteredTransactions}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No transactions found.</Text>
+            </View>
+          }
+        />
+      )}
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -230,6 +269,8 @@ const styles = StyleSheet.create({
   amountText: { fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
   categoryText: { fontSize: 10, color: COLORS.gray, textTransform: 'uppercase', letterSpacing: 0.5 },
   emptyContainer: { marginTop: 50, alignItems: 'center' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 10, color: COLORS.gray, fontSize: 14 },
   emptyText: { color: COLORS.gray, fontSize: 16 },
   deleteAction: {
     backgroundColor: COLORS.red,

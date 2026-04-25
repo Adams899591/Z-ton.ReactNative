@@ -89,6 +89,19 @@ const loginScreen = () => {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+      // 1. Check for the token FIRST before touching any system biometric modules
+      const biometricToken = await SecureStore.getItemAsync("biometric_token");
+
+      if (!biometricToken) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        Alert.alert(
+          "Fingerprint Not Enabled",
+          "Please log in with your password first and enable fingerprint login in your Security settings."
+        );
+        return; // Stop here: don't call the system hardware or prompt
+      }
+
+      // 2. Check if hardware is actually available now that we know we have a token
       // 1. Check if hardware supports biometrics and is enrolled
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
@@ -103,20 +116,8 @@ const loginScreen = () => {
         return;
       }
 
-      // 2. Retrieve the secure token stored during setup
-      const biometricToken = await SecureStore.getItemAsync("biometric_token");
-
-      if (!biometricToken) {
-        Alert.alert(
-          "Not Enabled",
-          "Fingerprint login is not enabled. Please log in with your password first and enable it in Profile & Security settings."
-        );
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        return;
-      }
-
      
-      // 3. Authenticate the user locally via hardware
+      // 3. Authenticate the user locally via hardware prompt
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Login to Z-ton Bank',
         cancelLabel: 'Cancel',
@@ -124,30 +125,34 @@ const loginScreen = () => {
  
       if (result.success) {
         setIsLoading(true);
-        // 4. Send token to backend to authenticate user
-        const response = await axios.post(`${API_URL}/auth/login-biometric`, {
-          biometric_token: biometricToken,
-        });
+        
+        try {
+          // 4. Send token to backend
+          const response = await axios.post(`${API_URL}/auth/login-biometric`, {
+            biometric_token: biometricToken,
+          });
 
-         const data = response.data; 
-        if (data.status === "success") {
-          await AsyncStorage.setItem("user", JSON.stringify(data.user));
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          setUser(data.user);
-          console.log(JSON.stringify(data.user, null, 2));
-          
-          router.replace("(drawer)/(tabs)/overview");
-        } else {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          Alert.alert("Login Failed", data.message || "Invalid biometric session.");
+          const data = response.data; 
+          if (data.status === "success") {
+            await AsyncStorage.setItem("user", JSON.stringify(data.user));
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setUser(data.user);
+            router.replace("(drawer)/(tabs)/overview");
+          } else {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert("Login Failed", data.message || "Invalid biometric session.");
+          }
+        } catch (apiError) {
+          // Handle API/Server errors specifically so they don't trigger the generic "Biometric Login Error" log
+          const message = apiError.response?.data?.message || "Server connection failed.";
+          Alert.alert("Login Error", message);
+        } finally {
+          setIsLoading(false);
         }
       }
     } catch (error) {
-      console.error("Biometric Login Error:", error);
-      const message = error.response?.data?.message || "Could not authenticate via biometrics.";
-      Alert.alert("Error", message);
-    } finally {
-      setIsLoading(false);
+      // This will now only log if the SecureStore or LocalAuthentication hardware calls actually crash
+      console.error("System Biometric Error:", error);
     }
   };
 

@@ -5,6 +5,8 @@ import { Switch } from 'react-native-gesture-handler'
 import * as LocalAuthentication from 'expo-local-authentication'; // Import LocalAuthentication
 import axios from 'axios';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { API_URL } from '../../app/server/config';
 const COLORS = { // Define colors for consistency
   black: "#000000",
@@ -36,7 +38,6 @@ const SecuritySettings = ({styles,user,setModalVisible,isFingerprintEnabled,setI
 
   // this function send request to laravel to disable user biometric
    const handleBiometricDisable = async () => {
-    // console.log("working");
     
         try {
              
@@ -46,6 +47,13 @@ const SecuritySettings = ({styles,user,setModalVisible,isFingerprintEnabled,setI
 
              // if request is successful set the biometric switch button to false
               if (data.status == "success") {
+
+                 // 1. delete  SecureStore biometric token
+                      await  SecureStore.deleteItemAsync("biometric_token");
+
+                 //2. remove AsyncStorage biometric token
+                 await AsyncStorage.removeItem("biometric_token");
+
                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                  setIsFingerprintEnabled(false)
               }
